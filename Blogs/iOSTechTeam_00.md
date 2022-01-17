@@ -7,7 +7,7 @@
 建iOS技术组这个群应该有5、6年了，前前后后有进有出，基本上维持在3~5个人之间，现在是最多的时候，6个人。因为群里人不常说话，偶尔会聊一些技术，偶尔会闲扯一些八卦，所以并没有把这个群定义的那么严苛，大家都做一个善良的人，主要是在有需的时候，认真的沟通一下技术以及碰到的问题，所以有兴趣的同学可以私聊我进群。
 
 当然，这是开头第一篇，我也不确定自己能否坚持写下去，所以总得给自己找一个持续下去的理由或者说目标，下图是从Bohdan Orlov的github上看到的一张图，描述了对于一个iOS开发者，在不同阶段相应的能力要求，我也期望自己能够从Junior开始，一点一点梳理iOS知识体系，最终能构建出一整套完整的知识体系。当然也希望能有小伙伴能加入进来，一起培养写作及总结知识的好习惯，这样也更容易坚持写下去吧。
-![iOS Developer Skills Matrix](/resource/iOSTechTeam_00/iOS-RoadMap.png)
+![iOS Developer Skills Matrix](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_00/iOS-RoadMap.png)
 
 最后：
 希望能坚持写下去，加油！
