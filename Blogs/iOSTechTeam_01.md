@@ -1,11 +1,17 @@
-# iOS Teach Team 探究@property
+# iOS Teach Team iOS探究属性@property
 
 ### 引言
 
-> @property应该面试过程中被问到最多的一个知识了，既能考察一个人的基础，又能挖掘一个人对知识细节的熟练度，本文着重全面，细致的介绍一下@property都有哪些知识点值得我们关注。
+> @property应该是面试过程中被问到最多的一个知识了，既能考察一个人的基础，又能挖掘一个人对知识细节的熟练度，本文着重全面，细致的介绍一下@property都有哪些知识点值得我们关注。
 
 * ### 代码规范
+
+声明@property时，注意关键词及字符间的空格，规范虽然对功能没有直接影响，但一个人，一个群体的规范性会提升整个行业的基本素养。
+
 > @property (nonatomic, copy) NSString *name;
+
+* ### 本质
+@property的默认本质其实是：ivar(实例变量) + getter + setter；
 
 * ### 常用关键词
 ```
@@ -29,7 +35,7 @@
 1. nonatomic
 2. atomic
 ```
-
+---
 接下来逐个介绍一下，每个关键词的作用:
 
 #### **存取器方法**
@@ -49,6 +55,7 @@
 
 ```
 
+---
 #### **读写权限**
 > 1. readwrite
 > 2. readonly
@@ -58,6 +65,7 @@
 * readonly
 表示只生成getter，不需要生成setter，即只可读，不可以修改。
 
+---
 #### **内存管理**
 > 1. strong
 > 2. assign
@@ -184,6 +192,7 @@ ARC下已不再使用retain，而是使用strong。retain同strong类似，用�
 
 unsafe_unretained不会对对象的引用计数+1，只能用来修饰对象类型，修饰的对象在被销毁的时，其指针不会自动清空，指向的仍然是已销毁的对象，这时再调用该指针时会产生野指针错误`:EXC_BAD_ACCESS`
 
+---
 ### **原子性**
 > atomic原子性：系统会自动给生成的getter/setter方法会进行加锁操作
 > nonatomic非原子性：系统自动生成的getter/setter方法不会进行加锁操作
@@ -222,3 +231,57 @@ unsafe_unretained不会对对象的引用计数+1，只能用来修饰对象类�
 ```
 
 由此可见，对属性对象的加锁操作仅限于对象的get/set操作，如果是get/set以外的操作，该加锁并没有意义，因此atomic的原子性，仅能保障的是对象的get/set的线程安全，并不能保障多线程下对对象的其他操作安全，如一个线程在get/set操作，一个线程进行release操作，可能会导致crash。此种场景的线程安全，还需要由开发者自己进行处理。
+
+---
+### 拓展知识
+
+* Category中添加属性@property
+
+在Category中添加@property，只会生成setter和getter方法的声明，并不会有具体的代码实现，具体原因是因为Category在运行期，对象的内存布局已经确定，此时如果添加实例变量就会破坏对象的内存布局，这将会是灾难性的，因此Category无法添加实例变量。那如何给Category实现类似实例变量功能呢，此处仅列举两种方式，因为可讲内容过多，因此此处暂时不做具体详解，后续会有文章单独介绍：
+1. 使用临时全局变量代替成员变量，并在属性的set/get函数中进行存取值操作；
+2. 通过Runtime添加管理对象实现成员变量，并在属性的set/get函数中进行存取值操作，关键调用有两个：
+> objc_setAssociatedObject(id _Nonnull object, const void * _Nonnull key, id _Nullable value, objc_AssociationPolicy policy) // 设置关联对象值调用
+>
+> objc_getAssociatedObject(id _Nonnull object, const void * _Nonnull key) // 获取关联对象值调用
+
+* Protocol中添加属性@property
+
+在protocol中添加属性@property，其实就是声明该属性的setter/getter方法，在实现该protocol时，并没有生成对应的成语变量，此时有动态实现和自动实现两种方式：
+1. 动态实现，需要在实现类中添加protocol中声明属性对应的setter/getter方法，并声明一个私有成语变量用来进行存取操作。**备注：** 实现类如果没有实现对应的setter/getter方法，在调用protocol属性的setter/getter方法是时会引起`Crash`
+2. 自动实现，可以通过`@synthesize propertyName;`告诉编译器自动添加对应的setter/getter方法，并生成对应的成员变量；
+
+* @synthesize作用
+
+`@synthesize`的作用是告诉编译器，自动创建属性的setter/getter方法，同时生成成员变量，并且可以给属性指定别名，如：
+>`@synthesize name = nickName;`
+
+* @dynamic作用
+
+`@dynamic`作用是告诉编译器，无需自动创建属性的setter/getter方法，这个时候就需要我们工程师自己手动实现相应的setter/getter，否则，在使用到相应属性的setter/getter方法时，会因找不到相应方法而Crash。
+
+* null相关的一些关键词
+```
+nullable // 可以为空
+nonnull // 不可以为空
+null_unspecified // 未知类型
+null_resettable // get不能为空，set可以为空
+__nullable // 可以为Null或nil
+__nonnull // 不可以为空
+```
+* Swift下的unowned与weak区别：
+
+Swift下weak的使用同Objective-C。
+unowned标记对象，即使它的原来引用已经被释放，它仍然会保持对被已经释放了的对象的一个 "无效的" 引用，它不是 Optional ，也不会被指向 nil。所以，当我们试图访问这样的 unowned 引用时，程序就会发生错误。而weak在引用的内容被释放后，标记为 weak 的成员将会自动地置为 nil。
+
+---
+### 总结
+@property延展相关的知识可以聊很多，如：copy相关的NSCopying协议，weak底层详细的实现原理，如何保障对象的多线程安全，还有很多知识点都跟Runtime、Runloop有关等等。
+
+知识点完整说下来就是一整套系统的协同运转，各个环节紧密相扣，最终才成为我们现在看到的样子。本文及以后的文章都会尽可能的收缩一下单片文章探讨的范围，以期能够让话题更加紧密。
+
+---
+**最后：期望接下来能再写一篇！**
+
+
+### 参考资料：
+[The Objective-C Programming Language](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjectiveC/Chapters/ocProperties.html#//apple_ref/doc/uid/TP30001163-CH17-SW2)
