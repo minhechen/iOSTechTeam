@@ -67,12 +67,12 @@
 
 ---
 #### **内存管理**
-> 1. strong
-> 2. assign
-> 3. copy
-> 4. weak
-> 5. retain
-> 6. unsafe_unretained
+> 1. strong             // 强引用，引用计数+1
+> 2. assign             // assign是指针赋值，不对引用计数操作，对象销毁后不会自动置为nil
+> 3. copy               // copy出一个新对象，引用计数为1
+> 4. weak               // 弱引用，不对引用计数操作，对象销毁时自动置为nil
+> 5. retain             // 强引用，对象引用计数+1
+> 6. unsafe_unretained  // 弱引用，不对引用计数操作，对象销毁时不会自动置为nil
 
 * **strong**
 
@@ -272,6 +272,15 @@ __nonnull // 不可以为空
 
 Swift下weak的使用同Objective-C。
 unowned标记对象，即使它的原来引用已经被释放，它仍然会保持对被已经释放了的对象的一个 "无效的" 引用，它不是 Optional ，也不会被指向 nil。所以，当我们试图访问这样的 unowned 引用时，程序就会发生错误。而weak在引用的内容被释放后，标记为 weak 的成员将会自动地置为 nil。
+> Define a capture in a closure as an unowned reference when the closure and the instance it captures will always refer to each other, and will always be deallocated at the same time.
+>
+>Conversely, define a capture as a weak reference when the captured reference may become nil at some point in the future. Weak references are always of an optional type, and automatically become nil when the instance they reference is deallocated. This enables you to check for their existence within the closure’s body.
+>
+> **NOTE:**
+>
+> **If the captured reference will never become nil, it should always be captured as an unowned reference, rather than a weak reference.**
+
+根据苹果的官方文档的建议。如果捕获的引用永远不会变为 nil，我们应该使用 unowned，否则应该使用weak。
 
 ---
 ### 总结
