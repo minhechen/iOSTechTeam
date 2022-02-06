@@ -98,7 +98,14 @@ struct category_t {
 5.可以为系统类添加分类，而不能为系统类添加扩展。
 
 ---
-### **+ load, + initialize，类，分类，父类调用规则，编译顺序对函数调用的影响**
+### **+ (void)load与+ (void)initialize区别**
+> ```+ (void)load```
+>
+> ```+ (void)initialize```
+
+* 主要区别有一下几点：
+1. 调用时机不同：`+ (void)load` 在 `main` 函数之前执行，且只会调用一次, `+ initialize` 在类的方法首次被调用时执行，每个类只会调用一次，但父类可能会调用多次；
+2. 
 ---
 ### 拓展知识
 1. iOS中变量修饰词@public、@protected、@package、@private的作用：
