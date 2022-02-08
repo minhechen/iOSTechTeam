@@ -89,9 +89,8 @@ struct category_t {
 
 定义在 `.m` 文件中的类扩展方法为私有的，如果需要声明私有方法，这种方式特别合适，定义在 .h 文件（头文件）中的类扩展方法为公有的。
 
-
 ---
-### **扩展与分类的区别**
+### **分类Category与扩展Extension的区别**
 
 1. 分类有名字，扩展没有名字，像是一个匿名的分类
 2. 分类是运行时决议，而扩展是编译时决议；所以分类中的方法没有实现不会警告，而扩展声明的方法不实现会出现警告。
@@ -112,11 +111,26 @@ struct category_t {
 > * 两个函数内部都使用了锁，因此两个函数都是线程安全的；
 
 2. **不同点：**
-> * 调用时机不同：`+ (void)load` 在 `main` 函数之前执行，且只会调用一次, `+ initialize` 在类的方法首次被调用时执行，每个类只会调用一次，但父类可能会调用多次；
-> * 调用方式不同：`+ (void)load` 是根据函数地址直接调用，`+ initialize` 是通过消息发送机制即 `objc_msgSend(id self, SEL _cmd, ...)` 调用；
-> * 子类父类调用关系不同：
-> > 1. 子类如果没有实现 `+ (void)load` 而父类实现了该方法，则不会调用其父类的 `+ (void)load` 方法。
-> > 2. 子类如果没有实现 `+ initialize` 而父类实现了该方法，则会调用父类的 `+ initialize` 方法；
+> 1. 调用时机不同：`+ (void)load` 在 `main` 函数之前执行，即 `objc_init` Runtime初始化时调用，且只会调用一次, `+ (void)initialize` 在类的方法首次被调用时执行，每个类只会调用一次，但父类可能会调用多次；
+> 2. 调用方式不同：`+ (void)load` 是根据函数地址直接调用，`+ initialize` 是通过消息发送机制即 `objc_msgSend(id self, SEL _cmd, ...)` 调用；
+> 3. 子类父类调用关系不同：
+> > * 如果子类没有实现 `+ (void)load`，则不会调用其父类的 `+ (void)load` 方法。
+> > * 如果子类没有实现 `+ (void)initialize`，则会调用其父类的方法，因此父类的 `+ (void)initialize` 可能会调用多次；
+> 4. 分类 `Category` 对调用的影响不同：
+> > * 如果 `Category` 中实现了 `+ (void)load`，则会优先调用原类的的 `+ (void)load`，再调用分类的，即优先级为：父类 > 原类 > 分类
+> > > 1. 没有继承关系的不同类中的 `+ (void)load` 的调用顺序跟Compile Sources顺序有关，即在前面的优先编译的类或者分类先调用（ **备注：** 所有类的 `+ (void)load` 优先级大于分类的优先级）；
+> > > 2. 同一个类的分类 `+ (void)load` 的调用顺序跟Compile Sources顺序有关，即在前面的优先编译的分类会先调用；
+> > > 3. 同一镜像中主工程的 `+ (void)load` 方法优先调用，然后再调用静态库的 `+ (void)load` 方法。有多个静态库时，静态库之间的执行顺序与编译顺序有关，即它们在Link Binary With Libraries中的顺序；
+> > > 4. 不同镜像中，动态库的 `+ (void)load` 方法优先调用，然后再调用主工程的 `+ (void)load`，多个动态库的 `+ (void)load` 方法的调用顺序跟编译顺序有关，即它们在Link Binary With Libraries中的顺序；
+
+> > * 如果 `Category` 中实现了 `+ (void)initialize`，则原类的 `+ (void)initialize` 将不会再调用
+> > > 1. 多个 `Category` 中同时实现了 `+ (void)initialize` 方法时，Compile Sources中顺序最下面的一个，即最后一个被编译分类的 `+ (void)initialize` 会执行；
+
+### 分类Category中添加关联对象
+
+`Category` 中添加属性 `@property` 在前文已做过简单介绍，具体可查看 [iOS探究属性@property](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)，这里我们重点说一下关联对象的实现原理：
+
+
 
 ---
 ### 拓展知识
