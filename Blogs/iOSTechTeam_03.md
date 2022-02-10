@@ -126,10 +126,240 @@ struct category_t {
 > > * 如果 `Category` 中实现了 `+ (void)initialize`，则原类的 `+ (void)initialize` 将不会再调用
 > > > 1. 多个 `Category` 中同时实现了 `+ (void)initialize` 方法时，Compile Sources中顺序最下面的一个，即最后一个被编译分类的 `+ (void)initialize` 会执行；
 
-### 分类Category中添加关联对象
+### 分类 `Category` 中添加关联对象
 
 `Category` 中添加属性 `@property` 在前文已做过简单介绍，具体可查看 [iOS探究属性@property](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)，这里我们重点说一下关联对象的实现原理：
 
+操作关联对象有三个核心方法：
+1. 设置关联对象方法：
+> objc_setAssociatedObject(id _Nonnull object, const void * _Nonnull key, id _Nullable value, objc_AssociationPolicy policy)
+> > * 1. id _Nonnull object: 给哪个对象添加关联对象，通常是当前对象，即用 `self` 即可；
+> > * 2. const void * _Nonnull key: 关联对象的 `key`，作为管理对象的唯一标识存在，它只要是一个非空指针即可；
+> > * 3. id _Nullable value: 关联对象的值，通过关联 `key` 进行设值及获取值，如果需要清除一个已存在的关联对象，将其值设置为 `nil` 即可；
+> > * 4. objc_AssociationPolicy policy: 关联策略，即关联对象的存储形式，其可选枚举值如下：
+``` 
+public enum objc_AssociationPolicy : UInt {
+    case OBJC_ASSOCIATION_ASSIGN = 0 // 指定对关联对象的弱引用
+    case OBJC_ASSOCIATION_RETAIN_NONATOMIC = 1 // 指定对关联对象的强引用，非原子性
+    case OBJC_ASSOCIATION_COPY_NONATOMIC = 3 // 指定复制关联的对象，非原子性
+    case OBJC_ASSOCIATION_RETAIN = 769 // 指定对关联对象的强引用，原子性
+    case OBJC_ASSOCIATION_COPY = 771 // 指定复制关联的对象，原子性
+} 
+```
+根据源码，我们可以知道 `objc_setAssociatedObject` 实际调用的是 `_object_set_associative_reference`:
+```
+void
+_object_set_associative_reference(id object, const void *key, id value, uintptr_t policy)
+{
+    // This code used to work when nil was passed for object and key. Some code
+    // probably relies on that to not crash. Check and handle it explicitly.
+    // rdar://problem/44094390
+    if (!object && !value) return;
+
+    if (object->getIsa()->forbidsAssociatedObjects())
+        _objc_fatal("objc_setAssociatedObject called on instance (%p) of class %s which does not allow associated objects", object, object_getClassName(object));
+
+    DisguisedPtr<objc_object> disguised{(objc_object *)object};
+    ObjcAssociation association{policy, value};
+
+    // retain the new value (if any) outside the lock.
+    association.acquireValue();
+
+    bool isFirstAssociation = false;
+    {
+        AssociationsManager manager;
+        AssociationsHashMap &associations(manager.get());
+
+        if (value) {
+            auto refs_result = associations.try_emplace(disguised, ObjectAssociationMap{});
+            if (refs_result.second) {
+                /* it's the first association we make */
+                isFirstAssociation = true;
+            }
+
+            /* establish or replace the association */
+            auto &refs = refs_result.first->second;
+            auto result = refs.try_emplace(key, std::move(association));
+            if (!result.second) {
+                association.swap(result.first->second);
+            }
+        } else {
+            auto refs_it = associations.find(disguised);
+            if (refs_it != associations.end()) {
+                auto &refs = refs_it->second;
+                auto it = refs.find(key);
+                if (it != refs.end()) {
+                    association.swap(it->second);
+                    refs.erase(it);
+                    if (refs.size() == 0) {
+                        associations.erase(refs_it);
+
+                    }
+                }
+            }
+        }
+    }
+
+    // Call setHasAssociatedObjects outside the lock, since this
+    // will call the object's _noteAssociatedObjects method if it
+    // has one, and this may trigger +initialize which might do
+    // arbitrary stuff, including setting more associated objects.
+    if (isFirstAssociation)
+        object->setHasAssociatedObjects();
+
+    // release the old value (outside of the lock).
+    association.releaseHeldValue();
+}
+```
+根据上述源码可以发现，`ObjcAssociation` 根据 传入的 `value` 及 `policy` 创建对象，并经过 `acquireValue` 函数处理生成新的 `_value` 。`acquireValue` 函数内部是通过对策略 `policy` 的判断进行相应处理，生成新值，其实现如下：
+```
+inline void acquireValue() {
+    if (_value) {
+        switch (_policy & 0xFF) {
+        case OBJC_ASSOCIATION_SETTER_RETAIN:
+            _value = objc_retain(_value);
+            break;
+        case OBJC_ASSOCIATION_SETTER_COPY:
+            _value = ((id(*)(id, SEL))objc_msgSend)(_value, @selector(copy));
+            break;
+        }
+    }
+}
+```
+
+接下来我们首先需要了解一下 `AssociationsManager` 和 `AssociationsHashMap`
+```
+class AssociationsManager {
+    using Storage = ExplicitInitDenseMap<DisguisedPtr<objc_object>, ObjectAssociationMap>;
+    static Storage _mapStorage;
+
+public:
+    AssociationsManager()   { AssociationsManagerLock.lock(); }
+    ~AssociationsManager()  { AssociationsManagerLock.unlock(); }
+
+    AssociationsHashMap &get() {
+        return _mapStorage.get();
+    }
+
+    static void init() {
+        _mapStorage.init();
+    }
+};
+```
+由源码可以知道，`AssociationsManager` 是以 `DisguisedPtr<objc_object>` 即一个指针地址作为 `key`，以 `ObjectAssociationMap` 即一个关联表作为 `value` 的哈希表来使用的。其内部是使用一个全局静态变量 `static Storage _mapStorage` 来存储程序中所有的关联对象。
+
+这里重点介绍一下全局静态变量 `static Storage _mapStorage` 的初始化时机，App启动过程中，在 `_objc_init` 函数中会调用 `void _dyld_objc_notify_register(_dyld_objc_notify_mapped    mapped, _dyld_objc_notify_init init, _dyld_objc_notify_unmapped  unmapped)`，具体如下：
+
+```
+void _objc_init(void)
+{
+    //...
+    // 此处仅保留谈到的函数
+    _dyld_objc_notify_register(&map_images, load_images, unmap_image);
+    //...
+}
+```
+在 `dyld` 源码中可以看到，函数 `_dyld_objc_notify_register` 中的三个参数为三个回调函数的指针，如下图：
+
+![](./resource/iOSTechTeam_03/dyld_objc_notify_register.png)
+
+回调函数会在所有镜像文件初始化完成之后，回调 `map_images(unsigned count, const char * const paths[], const struct mach_header * const mhdrs[])` 函数，详细调用流程如下图：
+
+
+**备注：图中已对无关代码进行删减，仅用来展示调用流程**
+![](./resource/iOSTechTeam_03/objc_associations_init.png)
+
+从上图我们就知道了，在App启动过程中 `AssociationsManager` 中的静态变量 `static Storage _mapStorage` 的初始化时机。在App启动之后，所有用到关联对象的地方，程序都是从这个全局静态变量 `_mapStorage` 中获取 `AssociationsHashMap` 来对关联对象进行进一步处理。
+
+在 `AssociationsManager` 中，我们可以看到是由一个 `AssociationsManagerLock` 叫做 `spinlock_t` 的互斥锁：
+
+> using spinlock_t = mutex_tt<LOCKDEBUG>;
+
+它是用来保障 `AssociationsManager` 中对 `AssociationsHashMap` 操作的线程安全。
+
+```
+AssociationsHashMap &get() {
+    return _mapStorage.get();
+}
+```
+
+对于 `AssociationsHashMap` 这个哈希表，则是由全局静态变量 `_mapStorage` 获取而来，因此不管任何时候操作关联对象，程序始终都是在操作这个 `AssociationsHashMap` 全局唯一的哈希表。
+
+**再回到上面 `_object_set_associative_reference` 源码中**，当我们添加一个关联对象时，`AssociationsHashMap` 会调用如下函数：
+```
+auto refs_result = associations.try_emplace(disguised, ObjectAssociationMap{});
+```
+`try_emplace` 函数的源码如下：
+
+```
+  template <typename... Ts>
+  std::pair<iterator, bool> try_emplace(const KeyT &Key, Ts &&... Args) {
+    BucketT *TheBucket;
+    if (LookupBucketFor(Key, TheBucket))
+      return std::make_pair(
+               makeIterator(TheBucket, getBucketsEnd(), true),
+               false); // Already in map.
+
+    // Otherwise, insert the new element.
+    TheBucket = InsertIntoBucket(TheBucket, Key, std::forward<Ts>(Args)...);
+    return std::make_pair(
+             makeIterator(TheBucket, getBucketsEnd(), true),
+             true);
+  }
+```
+
+首先根据传来的 `key` 即 `disguised` 在 `AssociationsHashMap` 中查找对应的 `ObjectAssociationMap` 是否已在映射表中，如果不在则将键插入，如果键不在，则创建一个 `BucketT` 即一个空的桶。在第二次调用 `try_emplace` 时将 `ObjcAssociation` （里面包含了 `_policy` 和 `_value` ）存储到这个 `BucketT` 空桶中。
+
+当设置的关联 `value` 为空的时候会进入 `if` 判断的 `else` 里面：
+```
+auto refs_it = associations.find(disguised);
+if (refs_it != associations.end()) {
+    auto &refs = refs_it->second;
+    auto it = refs.find(key);
+    if (it != refs.end()) {
+        association.swap(it->second);
+        refs.erase(it);
+        if (refs.size() == 0) {
+            associations.erase(refs_it);
+
+        }
+    }
+}
+```
+先去 `AssociationsHashMap` 里面查找 `disguised` ，如果找到则根据 `key` 查找到指定的关联对象，然后进行清除 `erase` 操作。之后判断当前 `object` 的关联对象是否为0，如果为0，则将当前关联对象从全局的 `AssociationsHashMap` 中移除。
+
+2. 获取关联对象方法：
+> objc_getAssociatedObject(id _Nonnull object, const void * _Nonnull key)
+> > * 1. id _Nonnull object: 获取哪个对象里面的关联对象；
+> > * 2. const void * _Nonnull key: 关联对象的 `key` ，与 `objc_setAssociatedObject` 中的 `key` 相对应，通过 `key` 值取出 `value` 即关联对象；
+
+其内部调用的是 `_object_get_associative_reference` 内部具体实现如下：
+
+![](./resource/iOSTechTeam_03/object_get_associative_reference.png)
+
+如果我们理解了设置关联对象的过程，上面的代码理解起来就比较简单了，从全局的 `AssociationsHashMap` 中取得 `object` 对象对应的 `ObjectAssociationMap` ，然后根据 `key` 从 `ObjectAssociationMap` 获取对应的 `ObjcAssociation` ，然后根据关联策略 `_policy` 判断是否需要对 `_value` 执行 `retain` 操作，最后根据关联策略 `_policy` 判断是否需要将 `_value` 添加到自动释放池，并返回 `_value`。
+
+3. 移除关联对象：
+上面已经提到，如果想要清除某一个特定关联对象，设置关联对象的 `value` 为 `nil` 即可。如果想要移除所有关联对象，则可以使用：
+> objc_removeAssociatedObjects(id _Nonnull object)
+> > * 1. id _Nonnull object: 移除给定对象的所有关联对象
+
+其内部实现代码如下：
+
+![](./resource/iOSTechTeam_03/objc_removeAssociatedObjects.png)
+
+当调用移除关联对象操作时，会先判断 `object` 是否为空及是否有关联对象存在，如果存储则会调用 `_object_remove_assocations` 函数。
+
+从上图其内部实现代码可以看到，程序会获取全局的 `AssociationsHashMap` 然后从中获取对象对应的 `ObjectAssociationMap` ，注释说如果不是 `deallocating`，则系统的关联对象将会保留。而 `objc_removeAssociatedObjects` 函数传入的 `deallocating` 参数为 `false`，因此我们可以推断，解除关联必定不是在调用 `objc_removeAssociatedObjects` 时。
+
+![](./resource/iOSTechTeam_03/objc_destructInstance.png)
+
+于是，我搜索了一下 `_object_remove_assocations`，发现了真正的调用时机，即在 `objc_destructInstance` 函数调用时，如上图。
+
+那什么时候会调用 `objc_destructInstance` 函数呢？带着这个疑问，我查了一下源码，这里简单说一下调用流程，后续会专门针对 `dealloc` 写相关文章，其大体流程如下：
+
+![](./resource/iOSTechTeam_03/dealloc.png)
+图中函数调用流程非常清晰，此处不做过多解释，所以，我们知道解除关联对象是在源对象 `dealloc` 时进行的。
 
 
 ---
@@ -176,10 +406,10 @@ struct category_t {
 ![](./resource/iOSTechTeam_03/view_controller_code_error.png)
 从上图示例代码可以看到，在其他类中是可以访问父类的 `@protected _birthday` 成员变量，但不能访问父类的 `@private _weight` 成员变量。
 
-
 ---
 ### 总结
 
+分类 `Category` 和扩展 `Extension` 涉及到的东西还是挺多的，这里仅对其核心要关注的一些点进行了详细介绍，希望对你我能有所帮助，感谢阅读。
 
 ---
 **最后：期望接下来能再写一篇！**
@@ -189,3 +419,5 @@ struct category_t {
 * [Categories and Extensions](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjectiveC/Chapters/ocCategories.html)
 
 * [Defining a Class](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjectiveC/Chapters/ocDefiningClasses.html#//apple_ref/doc/uid/TP30001163-CH12-SW1)
+
+* [Associated Objects](https://nshipster.com/associated-objects/)
