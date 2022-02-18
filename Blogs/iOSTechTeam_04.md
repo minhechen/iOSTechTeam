@@ -6,12 +6,12 @@
 ---
 * ### 常用的几种锁
 > 1. @synchronized        // 互斥锁（互斥递归锁）
-> 2. NSLock               // 互斥锁
-> 3. dispatch_semaphore   // 信号量
-> 4. pthread_mutex        // 互斥锁
+> 2. pthread_mutex        // 互斥锁
+> 3. NSLock               // 互斥锁
+> 4. NSRecursiveLock      // 递归锁
 > 5. NSCondition          // 条件锁
-> 6. NSRecursiveLock      // 递归锁
-> 7. NSConditionLock      // 条件锁
+> 6. NSConditionLock      // 条件锁
+> 7. dispatch_semaphore   // 信号量
 > 8. OSSpinLock           // 自旋锁
 
 
@@ -53,14 +53,18 @@
 
 `@synchronized` 是一个互斥锁->递归锁，内部搭配 `nil` 防止死锁，通过表的结构存要锁的对象,表内部的对象又是通过哈希存储的
 
+`objc_sync_enter(id obj)` 源码：
+
 ```
 int objc_sync_enter(id obj)
 {
     int result = OBJC_SYNC_SUCCESS;
 
     if (obj) {
-        SyncData* data = id2data(obj, ACQUIRE); // 从表中取出需要锁的数据
+        // 执行 ACQUIRE 操作，并返回对应 SyncData
+        SyncData* data = id2data(obj, ACQUIRE); 
         ASSERT(data);
+        // 加锁操作
         data->mutex.lock();
     } else {
         // @synchronized(nil) does nothing
@@ -74,16 +78,20 @@ int objc_sync_enter(id obj)
 }
 ```
 
+`objc_sync_exit(id obj)` 源码：
+
 ```
 int objc_sync_exit(id obj)
 {
     int result = OBJC_SYNC_SUCCESS;
     
     if (obj) {
+        // 执行 RELEASE 操作，并返回对应 SyncData
         SyncData* data = id2data(obj, RELEASE); 
         if (!data) {
             result = OBJC_SYNC_NOT_OWNING_THREAD_ERROR;
         } else {
+            // 尝试解锁操作
             bool okay = data->mutex.tryUnlock();
             if (!okay) {
                 result = OBJC_SYNC_NOT_OWNING_THREAD_ERROR;
@@ -402,10 +410,356 @@ result->nextData = *listp;
 
 如果是 `release` 环境下，则会调用 `_objc_crashlog` 将信息添加到崩溃日志中，然后调用 `abort_with_reason` 函数来中断程序运行
 
-**2. NSLock 互斥锁**
+**2. pthread_mutex 互斥锁**
+
+在 `POSIX`（Portable Operating System Interface：可移植操作系统）中，`pthread_mutex` 是一套用于多线程同步的 `mutex` 锁，如同名一样，使用起来非常简单，性能比较高，`pthread_mutex` 不是使用忙等，而是同信号量一样，会阻塞线程并进行等待，调用时进行线程上下文切换。
+
+```
+// 导入头文件
+#import <pthread.h>
+
+// 声明互斥锁
+pthread_mutex_t _lock;
+
+// 声明互斥锁属性对象
+pthread_mutexattr_t attr;
+
+// 初始化属性对象
+pthread_mutexattr_init(&attr);
+
+// 初始化互斥锁
+pthread_mutex_init(&lock, &attr);
+pthread_mutex_init(&lock, NULL);
+
+// 加锁
+pthread_mutex_lock(&_lock);
+
+// 解锁 
+pthread_mutex_unlock(&_lock);
+
+// 释放锁
+pthread_mutex_destroy(&_lock);
+
+// 设置互斥锁的类型属性
+pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
+
+// 互斥锁支持的协议类型宏定义
+/*
+ * Mutex protocol attributes
+ */
+#define PTHREAD_PRIO_NONE            0
+#define PTHREAD_PRIO_INHERIT         1
+#define PTHREAD_PRIO_PROTECT         2
+
+// 互斥锁支持的类型宏定义
+/*
+ * Mutex type attributes
+ */
+#define PTHREAD_MUTEX_NORMAL		0
+#define PTHREAD_MUTEX_ERRORCHECK	1
+#define PTHREAD_MUTEX_RECURSIVE		2
+#define PTHREAD_MUTEX_DEFAULT       PTHREAD_MUTEX_NORMAL
+```
+如果对 `pthread_mutex` 详细使用有兴趣的，可以阅读[互斥锁属性](https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886)深入了解一下。
+
+**3. NSLock 互斥锁**
+
+`NSLock` 底层是对 `pthread_mutex` 的一层封装，其性能比 `pthread_mutex` 略慢，但由于缓存的存在，多次调用并不会对性能参数太大影响。
 
 
+`NSLock` 源码在 `CoreFundation` 框架中，无法进行查看，但 `swift` 版本开源的 `CoreFoundation` 中我们可以看到关于 `NSLock` 的完整定义 [NSLock.swift](https://github.com/apple/swift-corelibs-foundation/blob/ce2827f06ca218fcb8756d9f0bc086b9746dffbe/Sources/Foundation/NSLock.swift)。
 
+```
+private typealias _MutexPointer = UnsafeMutablePointer<pthread_mutex_t>
+private typealias _RecursiveMutexPointer = UnsafeMutablePointer<pthread_mutex_t>
+private typealias _ConditionVariablePointer = UnsafeMutablePointer<pthread_cond_t>
+
+open class NSLock: NSObject, NSLocking {
+    internal var mutex = _MutexPointer.allocate(capacity: 1)
+
+    private var timeoutCond = _ConditionVariablePointer.allocate(capacity: 1)
+    private var timeoutMutex = _MutexPointer.allocate(capacity: 1)
+
+    public override init() {
+        // 初始化互斥锁，没有添加 pthread_mutexattr_t
+        pthread_mutex_init(mutex, nil)
+        pthread_cond_init(timeoutCond, nil)
+        pthread_mutex_init(timeoutMutex, nil)
+    }
+    
+    deinit {
+        // 销毁互斥锁
+        pthread_mutex_destroy(mutex)
+        mutex.deinitialize(count: 1)
+        mutex.deallocate()
+
+        deallocateTimedLockData(cond: timeoutCond, mutex: timeoutMutex)
+    }
+    
+    open func lock() {
+        // pthread_mutex 加锁
+        pthread_mutex_lock(mutex)
+    }
+
+    open func unlock() {
+        // pthread_mutex 解锁
+        pthread_mutex_unlock(mutex)
+
+        // Wakeup any threads waiting in lock(before:)
+        pthread_mutex_lock(timeoutMutex)
+        // 广播当前锁的状态
+        pthread_cond_broadcast(timeoutCond)
+        pthread_mutex_unlock(timeoutMutex)
+    }
+
+    // 尝试图获取锁，但是如果锁不可用的时候，它不会阻塞线程，只会返回 false
+    open func `try`() -> Bool {
+        return pthread_mutex_trylock(mutex) == 0
+    }
+    
+    // 在某一个时间点之前不断尝试加锁
+    open func lock(before limit: Date) -> Bool {
+        // pthread_mutex_trylock尝试加锁，如果加锁成功则直接返回true
+        if pthread_mutex_trylock(mutex) == 0 {
+            return true
+        }
+
+        // 内部通过 while 循环调用 pthread_mutex_trylock 不断尝试加锁。如果失败失败则返回false，如果成功则返回true
+        return timedLock(mutex: mutex, endTime: limit, using: timeoutCond, with: timeoutMutex)
+    }
+    // 可以使用一个字符串名称作为锁的标识，Cocoa 会将此名称用作涉及接收方的错误的一部分。
+    open var name: String?
+}
+```
+从代码可见，`NSLock` 还有对 `timeout` 超时控制，需要注意的是 `NSLock` 并不支持递归调用，即同一个线程不支持锁两次，如果出现递归调用则会造成死锁。如果需要实现递归调用，可以使用 `NSRecursiveLock` 。
+
+**4. NSRecursiveLock 互斥锁**
+
+同 `NSLock` 类似，我们也可以在 [NSLock.swift](https://github.com/apple/swift-corelibs-foundation/blob/ce2827f06ca218fcb8756d9f0bc086b9746dffbe/Sources/Foundation/NSLock.swift) 中查看 `NSRecursiveLock` 的完整定义：
+```
+private typealias _RecursiveMutexPointer = UnsafeMutablePointer<pthread_mutex_t>
+
+open class NSRecursiveLock: NSObject, NSLocking {
+    internal var mutex = _RecursiveMutexPointer.allocate(capacity: 1)
+
+    private var timeoutCond = _ConditionVariablePointer.allocate(capacity: 1)
+    private var timeoutMutex = _MutexPointer.allocate(capacity: 1)
+
+    public override init() {
+        super.init()
+        var attrib = pthread_mutexattr_t()
+
+        withUnsafeMutablePointer(to: &attrib) { attrs in
+            pthread_mutexattr_init(attrs)
+            // 初始化 pthread_mutexattr_t 互斥属性，设置递归类型为 PTHREAD_MUTEX_RECURSIVE
+            let type = Int32(PTHREAD_MUTEX_RECURSIVE)
+            pthread_mutexattr_settype(attrs, type)
+            pthread_mutex_init(mutex, attrs)
+        }
+        pthread_cond_init(timeoutCond, nil)
+        pthread_mutex_init(timeoutMutex, nil)
+    }
+    
+    deinit {
+        pthread_mutex_destroy(mutex)
+        mutex.deinitialize(count: 1)
+        mutex.deallocate()
+
+        deallocateTimedLockData(cond: timeoutCond, mutex: timeoutMutex)
+    }
+    
+    open func lock() {
+        pthread_mutex_lock(mutex)
+    }
+    
+    open func unlock() {
+        pthread_mutex_unlock(mutex)
+
+        // Wakeup any threads waiting in lock(before:)
+        pthread_mutex_lock(timeoutMutex)
+        pthread_cond_broadcast(timeoutCond)
+        pthread_mutex_unlock(timeoutMutex)
+    }
+    
+    open func `try`() -> Bool {
+        return pthread_mutex_trylock(mutex) == 0
+    }
+    
+    open func lock(before limit: Date) -> Bool {
+        if pthread_mutex_trylock(mutex) == 0 {
+            return true
+        }
+
+        return timedLock(mutex: mutex, endTime: limit, using: timeoutCond, with: timeoutMutex)
+    }
+
+    open var name: String?
+}
+```
+
+可以看到 `NSRecursiveLock` 同 `NSLock` 类似，只是初始化时有些差别，正是这些差别，使得 `NSRecursiveLock` 支持递归调用。
+```
+// NSLock 初始化没有添加 pthread_mutexattr_t
+pthread_mutex_init(mutex, nil)
+
+// NSRecursiveLock 初始化添加 pthread_mutexattr_t ，设置类型为递归类型 PTHREAD_MUTEX_RECURSIVE
+var attrib = pthread_mutexattr_t()
+withUnsafeMutablePointer(to: &attrib) { attrs in
+    pthread_mutexattr_init(attrs)
+    // 初始化 pthread_mutexattr_t 互斥属性，设置递归类型为 PTHREAD_MUTEX_RECURSIVE
+    let type = Int32(PTHREAD_MUTEX_RECURSIVE)
+    pthread_mutexattr_settype(attrs, type)
+    pthread_mutex_init(mutex, attrs)
+}
+```
+
+**5. NSCondition 互斥锁**
+
+```
+private typealias _MutexPointer = UnsafeMutablePointer<pthread_mutex_t>
+private typealias _ConditionVariablePointer = UnsafeMutablePointer<pthread_cond_t>
+
+open class NSCondition: NSObject, NSLocking {
+    internal var mutex = _MutexPointer.allocate(capacity: 1)
+    // 条件变量 pthread_cond_t
+    internal var cond = _ConditionVariablePointer.allocate(capacity: 1)
+
+    public override init() {
+        pthread_mutex_init(mutex, nil)
+        pthread_cond_init(cond, nil)
+    }
+    
+    deinit {
+        pthread_mutex_destroy(mutex)
+        pthread_cond_destroy(cond)
+        mutex.deinitialize(count: 1)
+        cond.deinitialize(count: 1)
+        mutex.deallocate()
+        cond.deallocate()
+    }
+    
+    open func lock() {
+        pthread_mutex_lock(mutex)
+    }
+    
+    open func unlock() {
+        pthread_mutex_unlock(mutex)
+    }
+    // 挂起当前线程等待唤醒信号
+    open func wait() {
+        pthread_cond_wait(cond, mutex)
+    }
+
+    open func wait(until limit: Date) -> Bool {
+        guard var timeout = timeSpecFrom(date: limit) else {
+            return false
+        }
+        return pthread_cond_timedwait(cond, mutex, &timeout) == 0
+    }
+    // 发送条件信号，唤醒线程
+    open func signal() {
+        pthread_cond_signal(cond)
+    }
+    // 发生广播条件信号，唤醒所有在等待的线程
+    open func broadcast() {
+        pthread_cond_broadcast(cond)
+    }
+    
+    open var name: String?
+}
+```
+从代码来看，`NSCondition` 底层也是对 `pthread_mutex` 的封装，另外增加了条件变量 `cond`，其是一个 `pthread_cond_t` 类型的变量，用于访问和操作特定类型数据的指针。
+
+其中 `wait` 操作会阻塞线程，使线程进入休眠状态，如果超时则返回 `false`。 `signal` 操作会唤醒一个正在休眠等待的线程。而 `broadcast` 会唤醒所有正在等待的线程。
+
+
+**6. NSConditionLock 互斥锁**
+
+```
+open class NSConditionLock : NSObject, NSLocking {
+    internal var _cond = NSCondition()
+    internal var _value: Int
+    // 当前线程
+    internal var _thread: _swift_CFThreadRef?
+    
+    public convenience override init() {
+        self.init(condition: 0)
+    }
+    
+    public init(condition: Int) {
+        _value = condition
+    }
+
+    open func lock() {
+        let _ = lock(before: Date.distantFuture)
+    }
+
+    open func unlock() {
+        _cond.lock()
+        _thread = nil
+        _cond.broadcast()
+        _cond.unlock()
+    }
+    
+    open var condition: Int {
+        return _value
+    }
+    // 只有满足条件变量等于指定值 condition，才能获取锁，一直等待
+    open func lock(whenCondition condition: Int) {
+        let _ = lock(whenCondition: condition, before: Date.distantFuture)
+    }
+    // 尝试加锁，返回是否加锁成功，不阻塞线程
+    open func `try`() -> Bool {
+        return lock(before: Date.distantPast)
+    }
+    // 满足条件变量等于指定值，尝试加锁，返回是否加锁成功
+    open func tryLock(whenCondition condition: Int) -> Bool {
+        return lock(whenCondition: condition, before: Date.distantPast)
+    }
+
+    // 解锁，并设置条件变量为指定值 condition
+    open func unlock(withCondition condition: Int) {
+        _cond.lock()
+        _thread = nil
+        _value = condition
+        _cond.broadcast()
+        _cond.unlock()
+    }
+    // 在指定时间之前一直尝试加锁，返回是否加锁成功
+    open func lock(before limit: Date) -> Bool {
+        _cond.lock()
+        while _thread != nil {
+            if !_cond.wait(until: limit) {
+                _cond.unlock()
+                return false
+            }
+        }
+        _thread = pthread_self()
+        _cond.unlock()
+        return true
+    }
+    // 满足条件变量为指定值，且在指定时间之前一直尝试加锁，返回是否加锁成功
+    open func lock(whenCondition condition: Int, before limit: Date) -> Bool {
+        _cond.lock()
+        while _thread != nil || _value != condition {
+            if !_cond.wait(until: limit) {
+                _cond.unlock()
+                return false
+            }
+        }
+        _thread = pthread_self()
+        _cond.unlock()
+        return true
+    }
+    
+    open var name: String?
+}
+```
+可以看到，`NSConditionLock` 是对 `NSCondition` 的进一步封装，增加了 `Int` 类型的 `_value` 条件变量，可以使用 `NSConditionLock` 来实现任务之间的依赖。
+
+**7. dispatch_semaphore 互斥锁**
+
+**8. OSSpinLock 互斥锁**
 ---
 ### 拓展知识
 
@@ -420,4 +774,6 @@ result->nextData = *listp;
 
 * [Threading Programming Guide](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/ThreadSafety/ThreadSafety.html) ( https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/ThreadSafety/ThreadSafety.html )
 
-* [More than you want to know about @synchronized](https://www.rykap.com/objective-c/2015/05/09/synchronized/) （ https://www.rykap.com/objective-c/2015/05/09/synchronized/ ）
+* [More than you want to know about @synchronized](https://www.rykap.com/objective-c/2015/05/09/synchronized/) ( https://www.rykap.com/objective-c/2015/05/09/synchronized/ )
+
+* [互斥锁属性](https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886) ( https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886 )
