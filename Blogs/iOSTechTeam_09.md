@@ -1,4 +1,4 @@
-# iOS Teach Team iOS中的第三方库管理工具
+# iOS Teach Team iOS
 
 ### 引言
 

@@ -1,6 +1,7 @@
 # iOS Teach Team iOS开发过程中常用的锁
 
 ### 引言
+
 在 iOS 开发过程中我们通过异步和多线程来提高程序的运行性能，于此同时多线程安全也就成为了一个我们必须要面对的问题，从安全上来说应该尽量避免资源在线程之间共享，以减少线程间的相互作用，因此线程锁就应运而生。在使用锁的过程中一定要小心，避免造成死锁而引起程序无法正常运行。
 
 ---
@@ -759,16 +760,176 @@ open class NSConditionLock : NSObject, NSLocking {
 
 **7. dispatch_semaphore 互斥锁**
 
+`dispatch_semaphore` 常用于保证资源的多线程安全。其本质是基于内核的信号量接口来实现的，是一种基于计数器的多线程同步机制。
+
+信号量（ `semaphore` ）是 `PV` 操作的载体，基本操作有四种：初始化、等信号、给信号、清理（**备注：** ARC 下，`semaphore` 的清理工作由 `GCD` 在底层自动完成）。对应的 `dispatch_semaphore` 接口定义在 `libdispatch` 源码的 `semaphore.h` 头文件里面，我们可以看到有如下三个方法定义：
+
+```
+// 创建一个信号量，初始值为 value，如果 value 小于0，则返回NULL
+dispatch_semaphore_t dispatch_semaphore_create(long value);
+
+// 等待减少信号量，dsema 为目标信号量对象，即 dsema 的信号量值减一，如果 dsema 的信号量 value 为0，则线程会被阻塞，直到 value 大于0或者 timeout
+long dispatch_semaphore_wait(dispatch_semaphore_t dsema, dispatch_time_t timeout);
+
+// 传入的信号量对象 dsema 的 value 值加1
+long dispatch_semaphore_signal(dispatch_semaphore_t dsema);
+
+```
+
+下面跟着源码详细介绍一下每个函数具体的实现：
+
+1. `dispatch_semaphore_create` :
+```
+dispatch_semaphore_t
+dispatch_semaphore_create(long value)
+{
+	dispatch_semaphore_t dsema;
+    // 如果 value 值小于 0，则直接返回 DISPATCH_BAD_INPUT
+	if (value < 0) {
+        // #define DISPATCH_BAD_INPUT   ((void *_Nonnull)0)
+		return DISPATCH_BAD_INPUT;
+	}
+
+	dsema = _dispatch_object_alloc(DISPATCH_VTABLE(semaphore),
+			sizeof(struct dispatch_semaphore_s));
+	dsema->do_next = DISPATCH_OBJECT_LISTLESS;
+    // 目标队列
+	dsema->do_targetq = _dispatch_get_default_queue(false);
+    // 当前值
+	dsema->dsema_value = value;
+	_dispatch_sema4_init(&dsema->dsema_sema, _DSEMA4_POLICY_FIFO);
+    // 初始值
+	dsema->dsema_orig = value;
+	return dsema;
+}
+```
+可以看到如果 `value` 值小于 0 则会直接返回 `NULL`。传递一个大于零的值会返回一个 `dispatch_semaphore_t` 类型的信号量对象 `dsema` 。
+
+2. `dispatch_semaphore_wait` :
+```
+long
+dispatch_semaphore_wait(dispatch_semaphore_t dsema, dispatch_time_t timeout)
+{
+    // 原子性操作信号量 dsema_value 减 1 
+	long value = os_atomic_dec2o(dsema, dsema_value, acquire);
+    // 如果 value 大于等于0，则直接 return
+	if (likely(value >= 0)) {
+		return 0;
+	}
+    // 如果 value 小于 0，则调用 _dispatch_semaphore_wait_slow 函数进行阻塞，等待信号量唤醒或者超时
+	return _dispatch_semaphore_wait_slow(dsema, timeout);
+}
+
+static long
+_dispatch_semaphore_wait_slow(dispatch_semaphore_t dsema,
+		dispatch_time_t timeout)
+{
+	long orig;
+
+	_dispatch_sema4_create(&dsema->dsema_sema, _DSEMA4_POLICY_FIFO);
+	switch (timeout) {
+	default:
+        // timeout 是一个特定时间会调用 _dispatch_sema4_timedwait 进行 timeout 时间的等待
+		if (!_dispatch_sema4_timedwait(&dsema->dsema_sema, timeout)) {
+			break;
+		}
+		// Fall through and try to undo what the fast path did to
+		// dsema->dsema_value
+	case DISPATCH_TIME_NOW:
+		orig = dsema->dsema_value;
+		while (orig < 0) {
+            // dsema_value 加 1 抵消掉 dispatch_semaphore_wait 函数中的减 1 操作
+			if (os_atomic_cmpxchgvw2o(dsema, dsema_value, orig, orig + 1,
+					&orig, relaxed)) {
+                // 返回超时
+				return _DSEMA4_TIMEOUT();
+			}
+		}
+		// Another thread called semaphore_signal().
+		// Fall through and drain the wakeup.
+	case DISPATCH_TIME_FOREVER:
+        // _dispatch_sema4_wait 里面是一个 do-while 循环，当不满足条件时，会一直循环下去，从而导致流程的阻塞
+		_dispatch_sema4_wait(&dsema->dsema_sema);
+		break;
+	}
+	return 0;
+}
+```
+等待减少信号量（ `dsema` 为目标信号量对象），即 `dsema` 的信号量值减一，如果信号量 `value` 为 0，则线程会被阻塞，直到 `value` 大于0或者超时。
+
+`timeout` 有 `DISPATCH_TIME_NOW` 和 `DISPATCH_TIME_FOREVER` ，也可以通过 `dispatch_time(dispatch_time_t when, int64_t delta)` 自定义时长。如果返回 0，说明 `P` 操作成功，如果返回非 0，说明 `P` 操作失败，执行超时。
+
+
+3. `dispatch_semaphore_signal` :
+```
+long dispatch_semaphore_signal(dispatch_semaphore_t dsema)
+{
+    // 原子性操作信号量 dsema_value 加1
+	long value = os_atomic_inc2o(dsema, dsema_value, release);
+    // value 大于 0，有资源可用，直接返回 0
+	if (likely(value > 0)) {
+		return 0;
+	}
+    // 过度操作导致signal信号不平衡，抛出 CRASH 异常
+	if (unlikely(value == LONG_MIN)) {
+		DISPATCH_CLIENT_CRASH(value,
+				"Unbalanced call to dispatch_semaphore_signal()");
+	}
+    // value 小于等于 0 时，表示目前有线程需要唤醒
+	return _dispatch_semaphore_signal_slow(dsema);
+}
+
+long
+_dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
+{
+    // 如果 &dsema->dsema_sema 为 NULL，则调用 _dispatch_sema4_create_slow 为 &dsema->dsema_sema 赋值
+	_dispatch_sema4_create(&dsema->dsema_sema, _DSEMA4_POLICY_FIFO);
+
+    // count 传 1，唤醒一条线程，如果有多个等待线程，则根据线程优先级来唤醒
+	_dispatch_sema4_signal(&dsema->dsema_sema, 1);
+	return 1;
+}
+```
+对应信号量的 V 操作，会将 `dsema` 的 `value` 值 +1，如果 `value` 大于 0 直接返回 0，否则进入 `_dispatch_semaphore_signal_slow` 方法，该函数会调用内核的 `semaphore_signal` 函数唤醒等待中的线程。
+
+`dispatch_semaphore` 常用于实现功能：
+
+> * 可用于保持线程同步，将异步执行任务转换为同步执行任务
+> * 保证线程安全，为线程加锁，相当于自旋锁
+
+值得注意的是，信号量运行效率比自旋锁略低，相对其他锁比较高。因此，在性能要求比较高的场景，信号量是一个优先级比较高的选择。
+
+
 **8. OSSpinLock 互斥锁**
+
+由于 `OSSpinLock` 不再安全，主要原因发生在低优先级线程拿到锁时，高优先级线程进入忙等 `busy-wait` 状态，占用大量 `CPU` 时间片，从而导致低优先级线程拿不到 `CPU` 时间片，无法完成任务并释放锁，这就造成了任务的优先级反转。
+
+从 iOS 10/macOS 10.12 开始 `OSSpinLock` 被弃用，其替代方案是内部封装了 `os_unfair_lock`，而 `os_unfair_lock` 在加锁时会处于休眠状态，而不是自旋锁的忙等状态。
+
 ---
 ### 拓展知识
 
----
-### 总结
+1. 什么是死锁？
+
+当两个以上的运算单元，双方都在等待对方停止执行，已获得系统资源，但是没有一方提前退出时，就称为死锁。
+
+2. 什么是 `PV` 操作？
+
+`PV` 操作是一种实现进程互斥与同步的有效方法。`PV` 操作与信号量的处理相关，具体定义如下： 
+* P(S)： ①将信号量 S 的值减 1，即S = S - 1； ②如果 S > 0，则该进程继续执行；否则该进程置为等待状态，排入等待队列。
+
+* V(S)： ①将信号量 S 的值加 1，即 S = S + 1；
 
 
 ---
-**最后：？！**
+### **总结**
+
+最后，借用一下YY大神的性能测试结果图，对比一下各种锁的性能：
+
+![](./resource/iOSTechTeam_04/lock_benchmark.png)
+
+---
+**最后：期望接下来能再写一篇！**
 
 ### 参考资料：
 
@@ -777,3 +938,5 @@ open class NSConditionLock : NSObject, NSLocking {
 * [More than you want to know about @synchronized](https://www.rykap.com/objective-c/2015/05/09/synchronized/) ( https://www.rykap.com/objective-c/2015/05/09/synchronized/ )
 
 * [互斥锁属性](https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886) ( https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886 )
+
+* [不再安全的 OSSpinLock](https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/)
