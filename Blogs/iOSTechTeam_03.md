@@ -261,13 +261,13 @@ void _objc_init(void)
 ```
 在 `dyld` 源码中可以看到，函数 `_dyld_objc_notify_register` 中的三个参数为三个回调函数的指针，如下图：
 
-![](./resource/iOSTechTeam_03/dyld_objc_notify_register.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/dyld_objc_notify_register.png)
 
 回调函数会在所有镜像文件初始化完成之后，回调 `map_images(unsigned count, const char * const paths[], const struct mach_header * const mhdrs[])` 函数，详细调用流程如下图：
 
 
 **备注：图中已对无关代码进行删减，仅用来展示调用流程**
-![](./resource/iOSTechTeam_03/objc_associations_init.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/objc_associations_init.png)
 
 从上图我们就知道了，在App启动过程中 `AssociationsManager` 中的静态变量 `static Storage _mapStorage` 的初始化时机。在App启动之后，所有用到关联对象的地方，程序都是从这个全局静态变量 `_mapStorage` 中获取 `AssociationsHashMap` 来对关联对象进行进一步处理。
 
@@ -335,7 +335,7 @@ if (refs_it != associations.end()) {
 
 其内部调用的是 `_object_get_associative_reference` 内部具体实现如下：
 
-![](./resource/iOSTechTeam_03/object_get_associative_reference.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/object_get_associative_reference.png)
 
 如果我们理解了设置关联对象的过程，上面的代码理解起来就比较简单了，从全局的 `AssociationsHashMap` 中取得 `object` 对象对应的 `ObjectAssociationMap` ，然后根据 `key` 从 `ObjectAssociationMap` 获取对应的 `ObjcAssociation` ，然后根据关联策略 `_policy` 判断是否需要对 `_value` 执行 `retain` 操作，最后根据关联策略 `_policy` 判断是否需要将 `_value` 添加到自动释放池，并返回 `_value`。
 
@@ -346,19 +346,19 @@ if (refs_it != associations.end()) {
 
 其内部实现代码如下：
 
-![](./resource/iOSTechTeam_03/objc_removeAssociatedObjects.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/objc_removeAssociatedObjects.png)
 
 当调用移除关联对象操作时，会先判断 `object` 是否为空及是否有关联对象存在，如果存储则会调用 `_object_remove_assocations` 函数。
 
 从上图其内部实现代码可以看到，程序会获取全局的 `AssociationsHashMap` 然后从中获取对象对应的 `ObjectAssociationMap` ，注释说如果不是 `deallocating`，则系统的关联对象将会保留。而 `objc_removeAssociatedObjects` 函数传入的 `deallocating` 参数为 `false`，因此我们可以推断，解除关联必定不是在调用 `objc_removeAssociatedObjects` 时。
 
-![](./resource/iOSTechTeam_03/objc_destructInstance.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/objc_destructInstance.png)
 
 于是，我搜索了一下 `_object_remove_assocations`，发现了真正的调用时机，即在 `objc_destructInstance` 函数调用时，如上图。
 
 那什么时候会调用 `objc_destructInstance` 函数呢？带着这个疑问，我查了一下源码，这里简单说一下调用流程，后续会专门针对 `dealloc` 写相关文章，其大体流程如下：
 
-![](./resource/iOSTechTeam_03/dealloc.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/dealloc.png)
 图中函数调用流程非常清晰，此处不做过多解释，所以，我们知道解除关联对象是在源对象 `dealloc` 时进行的。
 
 
@@ -376,7 +376,7 @@ if (refs_it != associations.end()) {
 
 实例变量范围图（`@package` 的范围图中未展示）
 
-![](./resource/iOSTechTeam_03/scopeinstancevariables.jpg)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/scopeinstancevariables.jpg)
 
 ```
 @interface Person : NSObject {
@@ -399,11 +399,11 @@ if (refs_it != associations.end()) {
 
 @end
 ```
-![](./resource/iOSTechTeam_03/son_test_code_error.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/son_test_code_error.png)
 @protected
 从上图示例代码可以看到，在子类中是可以访问父类的 `@protected _birthday` 成员变量，但不能访问父类的 `@private _weight` 成员变量。
 
-![](./resource/iOSTechTeam_03/view_controller_code_error.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/view_controller_code_error.png)
 从上图示例代码可以看到，在其他类中是可以访问父类的 `@protected _birthday` 成员变量，但不能访问父类的 `@private _weight` 成员变量。
 
 ---

@@ -291,7 +291,7 @@ objc_getAssociatedObject(id _Nonnull object, const void * _Nonnull key) // 获�
 根据苹果的官方文档的建议。如果捕获的引用永远不会变为 `nil`，我们应该使用 `unowned`，否则应该使用 `weak` 。
 
 ---
-### 总结
+### **总结**
 `@property` 延展相关的知识可以聊很多，如：`copy` 相关的 `NSCopying` 协议，`weak` 底层详细的实现原理，如何保障对象的多线程安全，还有很多知识点都跟 `Runtime` 、`Runloop` 有关等等。
 
 知识点完整说下来就是一整套系统的协同运转，各个环节紧密相扣，最终才成为我们现在看到的样子。本文及以后的文章都会尽可能的收缩一下单片文章探讨的范围，以期能够让话题更加紧密。
@@ -299,6 +299,10 @@ objc_getAssociatedObject(id _Nonnull object, const void * _Nonnull key) // 获�
 ---
 **最后：期望接下来能再写一篇！**
 
-
-### 参考资料：
+### **参考资料：**
 [The Objective-C Programming Language](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjectiveC/Chapters/ocProperties.html#//apple_ref/doc/uid/TP30001163-CH17-SW2)
+
+
+---
+### **关于技术组**
+iOS 技术组主要用来学习、分享日常开发中使用到的技术，一起保持学习，保持进步。文章仓库在这里：https://github.com/minhechen/iOSTechTeam 微信公众号：iOS技术组，欢迎联系交流，感谢阅读。

@@ -926,7 +926,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 
 最后，借用一下YY大神的性能测试结果图，对比一下各种锁的性能：
 
-![](./resource/iOSTechTeam_04/lock_benchmark.png)
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_04/lock_benchmark.png)
 
 ---
 **最后：期望接下来能再写一篇！**
