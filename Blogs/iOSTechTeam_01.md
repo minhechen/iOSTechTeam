@@ -2,7 +2,7 @@
 
 ### 引言
 
-> `@property` 应该是面试过程中被问到最多的一个技术点，既能考察一个人的基础，又能挖掘一个人对技术细节的掌握度，本文着重全面，细致的介绍一下  `@property` 都有哪些技术点值得我们关注。
+> `@property` 应该是面试过程中被问到最多的一个技术点，既能考察一个人的基础，又能挖掘一个人对技术细节的掌握度。本文着重全面，细致的介绍一下  `@property` 都有哪些技术点值得我们关注。
 
 * ### 代码规范
 
@@ -311,8 +311,6 @@ objc_getAssociatedObject(id _Nonnull object, const void * _Nonnull key) // 获�
 知识点完整说下来就是一整套系统的协同运转，各个环节紧密相扣，最终才成为我们现在看到的样子。本文及以后的文章都会尽可能的收缩一下单篇文章探讨的范围，以期能够让话题更加紧密。
 
 ---
-**最后：期望接下来能再写一篇！**
-
 ### **参考资料：**
 [The Objective-C Programming Language](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ObjectiveC/Chapters/ocProperties.html#//apple_ref/doc/uid/TP30001163-CH17-SW2)
 

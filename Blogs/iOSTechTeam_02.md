@@ -185,8 +185,6 @@ NSLog(@"mutableArray: %@", mutableArray);
 以上就是本文对Block的核心知识点的介绍，感谢阅读。
 
 ---
-**最后：期望接下来能再写一篇！**
-
 ### 参考资料：
 [Working with Blocks](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/ProgrammingWithObjectiveC/WorkingwithBlocks/WorkingwithBlocks.html)
 

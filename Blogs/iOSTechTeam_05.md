@@ -48,6 +48,7 @@ iOS Dependency manager 即 iOS 依赖管理器，几乎每个项目都会使用�
 ---
 * ### CocoaPods 使用及原理
 
+
 ---
 * ### Carthage 使用及原理
 
@@ -65,7 +66,7 @@ iOS Dependency manager 即 iOS 依赖管理器，几乎每个项目都会使用�
 
 
 ---
-**最后：？！**
+**最后：期望接下来能再写一篇！**
 
 ### 参考资料：
 
