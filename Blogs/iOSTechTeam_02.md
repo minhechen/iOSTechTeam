@@ -35,7 +35,7 @@ NSLog(@"exampleBlock is: %@",[exampleBlock class]);
 ```
 打印日志：`exampleBlock is: __NSGlobalBlock__`
 
-如果一个 Block 没有访问外部局部变量，或者访问的是全局变量，或者静态局部变量，此时的 Block 就是一个全局 Block ，并且数据存储在全局区。
+如果一个 `block` 没有访问外部局部变量，或者访问的是全局变量，或者静态局部变量，此时的 `block` 就是一个全局 `block` ，并且数据存储在全局区。
 
 2. __NSStackBlock__
 ```
@@ -51,7 +51,7 @@ NSLog(@"exampleBlock is: %@",[exampleBlock class]);
 
 我们可以去 `Build Settings` 里面，找到 `Objective-C Automatic Reference Counting` ，并将其设置为 `No` ，然后再 Run 一次代码。你会看到打印日志是：`exampleBlock is: __NSStackBlock__`
 
-如果 Block 访问了外部局部变量，此时的 Block 就是一个栈 Block ，并且存储在栈区。由于栈区的释放是由系统控制，因此栈中的代码在作用域结束之后内存就会销毁，如果此时再调用 Block 就会发生问题，( **注：** 此代码运行在MRC下)如：
+如果 `block` 访问了外部局部变量，此时的 `block` 就是一个栈 `block` ，并且存储在栈区。由于栈区的释放是由系统控制，因此栈中的代码在作用域结束之后内存就会销毁，如果此时再调用 `block` 就会发生问题，( **注：** 此代码运行在 MRC 下)如：
 ```
 void (^simpleBlock)(void);
 void callFunc() {
@@ -78,10 +78,10 @@ int main(int argc, char * argv[]) {
 3. __NSMallocBlock__
 
 当一个 `__NSStackBlock__` 类型 Block 做 `copy` 操作后就会将这个 Block 从栈上复制到堆上，而堆上的这个 Block 类型就是 `__NSMallocBlock__` 类型。在 ARC 环境下，编译器会根据情况，自动将 Block 从栈上 `copy` 到堆上。具体会进行 `copy` 的情况有如下 4 种：
-* Block 作为函数的返回值时；
-* Block 赋值给 __strong 指针，或者赋值给 Block 类型的成员变量时；
-* Block 作为 Cocoa API 中方法名含有 usingBlock 的方法参数时；
-* Block 作为 GCD API 的方法参数时；
+* block 作为函数的返回值时；
+* block 赋值给 __strong 指针，或者赋值给 block 类型的成员变量时；
+* block 作为 Cocoa API 中方法名含有 usingBlock 的方法参数时；
+* block 作为 GCD API 的方法参数时；
 
 ---
 ### **__block 的作用**
@@ -122,13 +122,13 @@ struct __Block_byref_val_0 {
 
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_02/block_self.png)
 
-`self` 本身会对 `block` 进行强引用，`block` 会对其对象强进行引用，对于 `self` 也会形成强引用，这样就会造成循环引用的问题。我们可以通过使用 `__weak` 打破循环，使 `block` 对象对 `self` 弱引用。
+`self` 本身会对 `block` 进行强引用，`block` 也会对 `self` 形成强引用，这样就会造成循环引用的问题。我们可以通过使用 `__weak` 打破循环，使 `block` 对象对 `self` 弱引用。
 
 此时我们注意，由于 `block` 对 `self` 的引用为 `weak` 引用，因此有可能在执行 `block` 时，`self` 对象本身已经释放，那么我们如何保证 `self` 对象不在 `block` 内部释放呢？这就引出了下面`__strong` 的作用。
 
 ---
 ### **__strong的作用**
-简单来说，是防止 `block` 内部引用的外部 `weak` 变量被提前释放，进而在 `block` 内部无法获取 `weak` 变量以继续使用的情况；
+简单来说，是防止 Block 内部引用的外部 `weak` 变量被提前释放，进而在 Block 内部无法获取 `weak` 变量以继续使用的情况；
 ```
 __weak __typeof(self) weakSelf = self;
 void (^exampleBlock)(void) = ^{
@@ -175,7 +175,7 @@ NSLog(@"mutableArray: %@", mutableArray);
     2
 )
 
-答案是：不需要，因为在 `Block` 内部，我们只是使用了对象 `mutableArray` 的内存地址，往其中添加内容。并没有修改其内存地址，因此不需要使用 `__block` 也可以正确执行。当我们只是使用局部变量的内存地址，而不是对其内存地址进行修改时，我们无需对其添加`__block` ，如果添加了 `__block` 系统会自动创建相应的结构体，这种情况冗余且低效。
+答案是：不需要，因为在 `block` 内部，我们只是使用了对象 `mutableArray` 的内存地址，往其中添加内容。并没有修改其内存地址，因此不需要使用 `__block` 也可以正确执行。当我们只是使用局部变量的内存地址，而不是对其内存地址进行修改时，我们无需对其添加`__block` ，如果添加了 `__block` 系统会自动创建相应的结构体，这种情况冗余且低效。
 
 ---
 ### **总结**
