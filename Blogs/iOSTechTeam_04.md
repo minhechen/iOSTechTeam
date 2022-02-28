@@ -907,7 +907,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 从 iOS 10/macOS 10.12 开始 `OSSpinLock` 被弃用，其替代方案是内部封装了 `os_unfair_lock`，而 `os_unfair_lock` 在加锁时会处于休眠状态，而不是自旋锁的忙等状态。
 
 ---
-### 拓展知识
+### **拓展知识**
 
 1. 什么是死锁？
 
@@ -929,9 +929,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_04/lock_benchmark.png)
 
 ---
-**最后：期望接下来能再写一篇！**
-
-### 参考资料：
+### **参考资料：**
 
 * [Threading Programming Guide](https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/ThreadSafety/ThreadSafety.html) ( https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/Multithreading/ThreadSafety/ThreadSafety.html )
 

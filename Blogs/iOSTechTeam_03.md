@@ -363,7 +363,7 @@ if (refs_it != associations.end()) {
 
 
 ---
-### 拓展知识
+### **拓展知识**
 1. iOS中变量修饰词@public、@protected、@package、@private的作用：
 > @package // 常用于框架类的实例变量，使用@private太限制，使用@protected或者@public又太开放，这时可以使用@pakage
 >
@@ -407,7 +407,7 @@ if (refs_it != associations.end()) {
 从上图示例代码可以看到，在其他类中是可以访问父类的 `@protected _birthday` 成员变量，但不能访问父类的 `@private _weight` 成员变量。
 
 ---
-### 总结
+### **总结**
 
 分类 `Category` 和扩展 `Extension` 涉及到的东西还是挺多的，这里仅对其核心要关注的一些点进行了详细介绍，另外还有关于 `Category` 装载的过程，希望对你我能有所帮助，感谢阅读。
 
