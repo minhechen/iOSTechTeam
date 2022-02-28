@@ -175,16 +175,64 @@ NSLog(@"mutableArray: %@", mutableArray);
     2
 )
 
-答案是：不需要，因为在 `block` 内部，我们只是使用了对象 `mutableArray` 的内存地址，往其中添加内容。并没有修改其内存地址，因此不需要使用 `__block` 也可以正确执行。当我们只是使用局部变量的内存地址，而不是对其内存地址进行修改时，我们无需对其添加`__block` ，如果添加了 `__block` 系统会自动创建相应的结构体，这种情况冗余且低效。
+答案是：不需要，因为在 `block` 内部，我们只是使用了对象 `mutableArray` 的内存地址，往其中添加内容。并没有修改其内存地址，因此不需要使用 `__block` 也可以正确执行。当我们只是使用局部变量的内存地址，而不是对其内存地址进行修改时，我们无需对其添加 `__block` ，如果添加了 `__block` 系统会自动创建相应的结构体，这种情况冗余且低效。
+
+* Block 数据结构
+
+Block 内部数据结构图如下：
+
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_02/block_layout.jpg)
+
+```
+struct Block_descriptor {
+    unsigned long int reserved;
+    unsigned long int size;
+    void (*copy)(void *dst, void *src);
+    void (*dispose)(void *);
+};
+
+struct Block_layout {
+    void *isa;
+    int flags;
+    int reserved; 
+    void (*invoke)(void *, ...);
+    struct Block_descriptor *descriptor;
+    /* Imported variables. */
+};
+```
+
+`Block_layout` 结构体成员含义如下：
+
+> `isa:` 指向所属类的指针，也就是 block 的类型
+>
+> `flags:` 按 bit 位表示一些 block 的附加信息，比如判断 block 类型、判断 block 引用计数、判断 block 是否需要执行辅助函数等；
+>
+> `reserved:` 保留变量；
+>
+> `invoke:` block 函数指针，指向具体的 block 实现的函数调用地址，block 内部的执行代码都在这个函数中；
+>
+> `descriptor:` 结构体 Block_descriptor，block 的附加描述信息，包含 copy/dispose 函数，block 的大小，保留变量；
+>
+> `variables:` 因为 block 有闭包性，所以可以访问 block 外部的局部变量。这些 variables 就是复制到结构体中的外部局部变量或变量的地址；
+
+`Block_descriptor` 结构体成员含义如下：
+
+> `reserved:` 保留变量；
+>
+> `size:` block 的大小；
+>
+> `copy:` 函数用于捕获变量并持有引用；
+>
+> `dispose:` 析构函数，用来释放捕获的资源；
 
 ---
 ### **总结**
 
-使用 `Block` 过程中需要我们关注的重点有 4 个：
+使用 Block 过程中需要我们关注的重点有 4 个：
 
-1. Block 的三种类型；
-2. Block 避免引起循环引用；
-3. Block 对 auto 变量的 copy 操作；
+1. block 的三种类型；
+2. block 避免引起循环引用；
+3. block 对 auto 变量的 copy 操作；
 4. __block、__weak、__strong 的作用；
 
 以上就是本文对 Block 的核心知识点的介绍，感谢阅读。
