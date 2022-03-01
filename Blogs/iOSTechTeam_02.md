@@ -1,10 +1,11 @@
 # iOS Teach Team iOS 深入理解 Block
 
-### 引言
+### **引言**
 > 在 iOS 日常开发中，Block 的使用频率是比较多的，我们不会每天都做启动优化，也不会每天都做性能优化，但有可能每天都会用到 Block 。本文就着重介绍一下 Block 在日常开发中值得我们关注的技术点，大家一起学习。
 
 ---
-* ### 代码规范
+### **代码规范**
+
 ```
 // 定义一个 Block
 typedef returnType (^BlockName)(parameterA, parameterB, ...);
@@ -16,15 +17,15 @@ eg: typedef void (^RequestResult)(BOOL result);
     NSLog(@"This is a block");
  }
 ```
----
-* ### **本质**
+
+### **本质**
 
 Block 本质上是一个 Objective-C 的对象，它内部也有一个 `isa` 指针，它是一个封装了函数及函数调用环境的 Objective-C 对象，可以添加到 `NSArray` 及 `NSDictionary` 等集合中，它是基于 `C` 语言及运行时特性，有点类似标准的 `C` 函数。但除了可执行代码以外，另外包含了变量同堆或栈的自动绑定。
 
 ---
-* ### **常用介绍**
+### **常用介绍**
 
-### **Block 的类型：**
+* **Block 的类型：**
 
 1. __NSGlobalBlock__
 ```
@@ -44,6 +45,7 @@ void (^exampleBlock)(void) = ^{
     // block
     NSLog(@"exampleBlock is: %d", temp);
 };
+
 NSLog(@"exampleBlock is: %@",[exampleBlock class]);
 ```
 打印日志：`exampleBlock is: __NSMallocBlock__`？？？
@@ -84,7 +86,7 @@ int main(int argc, char * argv[]) {
 * block 作为 GCD API 的方法参数时；
 
 ---
-### **__block 的作用**
+* **__block 的作用**
 
 简单来说，`__block` 作用是允许 `block` 内部访问和修改外部变量，在 ARC 环境下还可以用来防止循环引用；
 
@@ -111,12 +113,13 @@ struct __Block_byref_val_0 {
     int age; // 捕获到的变量
 }
 ```
+
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_02/block_struct.jpg)
 
 从上图可以看到，如果 `block` 是在栈上，那么这个 `__forwarding` 指针就是指向它自己，当这个 `block` 从栈上复制到堆上后，栈上的 `__forwarding` 指针指向的是复制到堆上的 `__block` 结构体。堆上的 `__block` 结构体中的 `__forwarding` 指向的还是它自己，即 `age->__forwarding` 获取到堆上的 `__block` 结构体，`age->__forwarding->age` 会把堆上的 `age` 赋值为 16 。因此不管是栈上还是堆上的 `__block` 结构体，最终使用到的都是堆上的 `__block` 结构体里面的数据。
 
 ---
-### **__weak的作用** 
+* **__weak 的作用** 
 
 简单来说是为了防止循环引用。
 
@@ -127,7 +130,7 @@ struct __Block_byref_val_0 {
 此时我们注意，由于 `block` 对 `self` 的引用为 `weak` 引用，因此有可能在执行 `block` 时，`self` 对象本身已经释放，那么我们如何保证 `self` 对象不在 `block` 内部释放呢？这就引出了下面`__strong` 的作用。
 
 ---
-### **__strong的作用**
+* **__strong 的作用**
 简单来说，是防止 Block 内部引用的外部 `weak` 变量被提前释放，进而在 Block 内部无法获取 `weak` 变量以继续使用的情况；
 ```
 __weak __typeof(self) weakSelf = self;
@@ -153,7 +156,6 @@ void (^exampleBlock)(void) = ^{
 };
 ```
 
----
 ### **拓展知识**
 * 思考题
 
