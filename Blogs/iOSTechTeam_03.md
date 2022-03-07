@@ -1,8 +1,8 @@
-# iOS Teach Team iOS分类与扩展详解
+# iOS Teach Team iOS 类别 Category 与扩展 Extension 详解
 
 ### 引言
 
-> 类别允许你即便没有源代码，仍然可以向现有的类中添加方法。类别的功能很强大，它允许你无需子类化而扩展现有类。使用类别，还可以将类的实现分发到多个文件中。类扩展与此类似，但允许在主类@interface 块内以外的位置为类声明额外的必需 API。
+> 类别 `category` 允许你即便没有源代码情况下，仍然可以向已有的类中添加方法，它的功能很强大，它允许你无需子类化而扩展现有类。使用类别，还可以将类的实现分发到多个文件中。类扩展与此类似，但允许在主类@interface 块内以外的位置为类声明额外的 API。
 ---
 * ### 代码规范
 
@@ -18,12 +18,12 @@
 **Extension:**
 ```
 @interface MyClass : NSObject
-@property (retain, readonly) float value;
+@property (nonatomic, copy, readonly) NSString *name;
 @end
  
 // Private extension, typically hidden in the main implementation file.
 @interface MyClass ()
-@property (retain, readwrite) float value;
+@property (nonatomic, copy, readwrite) NSString *name;
 @end
 ```
 
@@ -32,14 +32,14 @@
 
 您可以通过在接口文件中，以类别名称声明它们，并在实现文件中以相同名称定义它们来将方法添加到类。类别名称表明这些方法是对在别处声明的类的添加，而不是一个新类。但是，不能通过类别添加实例变量到类中。
 
-类别添加的方法成为类类型的一部分。例如，在一个类别中添加到NSArray类中的方法，是编译器期望NSArray实例在其配置表中包含的方法。然而，子类中添加到NSArray类中的方法并不包含在NSArray类型中。(这只对静态类型的对象有影响，因为静态类型是编译器知道对象类的唯一方式。)
+类别添加的方法成为类类型的一部分。例如，在一个类别中添加到 `NSArray`类中的方法，是编译器期望 `NSArray` 实例在其配置表中包含的方法。然而，子类中添加到 `NSArray` 类中的方法并不包含在 `NSArray` 类型中。(这只对静态类型的对象有影响，因为静态类型是编译器知道对象类的唯一方式。)
 
 ---
 * ### 常用介绍
 
-**分类：**
+**类别：**
 
-分类在经历过编译后，分类里面的内容：对象方法、类方法、协议、属性都转化为类型为category_t的结构体变量：
+`Category` 在经历过编译后里面的内容：对象方法、类方法、协议、属性都转化为类型为 `category_t` 的结构体变量：
 ```
 struct category_t {
     const char *name;
@@ -64,11 +64,11 @@ struct category_t {
     }
 };
 ```
-具体Category都能做什么，常用的大致有如下几个场景：
-1. 在不修改原有类的基础上给原有类添加方法，因为分类的结构体指针中没有属性列表，只有方法列表。所以原则来说只能给分类添加方法，不能添加属性，如果需要给分类添加类似属性功能，可以通过关联对象实现；
-2. 分类中的方法优先于原有类同名的方法, 即会优先调用分类中的方法, 忽略原有类的方法。即分类与原有类同名方法调用的优先级为： 分类 > 本类 > 父类。开发中尽量不要覆盖本类的方法，如果覆盖会导致本类方法失效；
-3. 如果给Category添加@property属性，只会生成setter和getter方法的声明，并不会有具体的代码实现，详细解释可参考历史文章：[iOS探究属性@property](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)
-4. 分类中可以访问原有类中 `.h` 中声明的成员变量；
+具体 `category` 都能做什么，常用的大致有如下几个场景：
+1. 在不修改原有类的基础上给原有类添加方法，因为 `category` 的结构体指针中没有属性列表，只有方法列表。所以原则来说只能给 `category` 添加方法，不能添加属性，如果需要给 `category` 添加类似属性功能，可以通过关联对象实现，下面会有具体介绍；
+2. `Category` 中的方法优先于原有类同名的方法，即会优先调用 `category` 中的方法，忽略原有类的方法。即 `category` 与原有类同名方法调用的优先级为： `category` > 本类 > 父类。开发中尽量不要覆盖本类的方法，如果覆盖会导致本类方法失效；
+3. 如果给 `category` 添加属性 `@property`，只会生成 `setter/getter` 方法的声明，并不会有具体的代码实现，详细解释可参考历史文章：[iOS 探究属性 @property](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)
+4. `Category` 中可以访问原有类中 `.h` 中声明的成员变量；
 
 
 ---
@@ -79,27 +79,27 @@ struct category_t {
 
 @end
 ```
-类的Extension看起来很像一个匿名的Category。通常用来声明私有方法，私有属性和私有成员变量。
+类的 `extension` 看起来很像一个匿名的 `category`。通常用来声明私有方法，私有属性和私有成员变量。
 
-> extension 在编译期决议， category在运行期决议。
+> extension 在编译期决议， category 在运行期决议。
 
-类扩展不能像类别 `Category` 那样拥有独立的实现部分（@implementation部分），也就是说，类的扩展所声明的方法必须依托原类的实现代码部分来实现。
+类扩展不能像类别 `category` 那样拥有独立的实现部分（`@implementation` 部分）。也就是说，类的扩展所声明的方法必须依托原类的实现代码部分来实现。
 
-因此，我们不能给系统类添加类扩展。即扩展的方法只能在原类中实现。例如我们扩展NSString，那么只能在 `NSString的.m` 中实现，但我们拿不到 `NSString的.m` 的源码，因此，我们不能给 `NSString` 添加扩展，只能给 `NSString` 添加分类；
+因此，我们不能给系统类添加类扩展。即扩展的方法只能在原类中实现。例如我们扩展 `NSString` ，那么只能在 `NSString的.m` 中实现，但我们拿不到 `NSString.m` 的源码。因此，我们不能给 `NSString` 添加扩展，只能给 `NSString` 添加 `category` ；
 
-定义在 `.m` 文件中的类扩展方法为私有的，如果需要声明私有方法，这种方式特别合适，定义在 .h 文件（头文件）中的类扩展方法为公有的。
-
----
-### **分类Category与扩展Extension的区别**
-
-1. 分类有名字，扩展没有名字，像是一个匿名的分类
-2. 分类是运行时决议，而扩展是编译时决议；所以分类中的方法没有实现不会警告，而扩展声明的方法不实现会出现警告。
-3. 分类原则上可以增加属性，实例方法，类方法，而且外部类是可以访问的。扩展能添加属性，方法，实例变量，默认是不对外公开的。
-4. 分类有自己的实现部分，扩展没有自己的实现部分，只能依赖类本身来实现。
-5. 可以为系统类添加分类，而不能为系统类添加扩展。
+定义在 `.m` 文件中的类扩展方法为私有的，如果需要声明私有方法，这种方式特别合适。定义在 .h 文件（头文件）中的类扩展方法为公有的。
 
 ---
-### **+ (void)load与+ (void)initialize区别**
+### **类别 Category 与扩展 Extension 的区别**
+
+1. Category 有名字，extension 没有名字，像是一个匿名的 category；
+2. Category 是运行时决议，而 extension 是编译时决议。所以 category 中的方法没有实现不会警告，而 extension 声明的方法不实现则会出现警告；
+3. Category 原则上可以增加属性，实例方法，类方法，而且外部类是可以访问的。extension 能添加属性、方法、实例变量，且默认是私有的；
+4. Category 有自己的实现部分，extension 没有自己的实现部分，只能依赖类本身来实现；
+5. 可以为系统类添加 category，而不能为系统类添加 extension；
+
+---
+### **关于类的 `+ (void)load` 与 `+ (void)initialize` 的区别**
 > ```+ (void)load```
 >
 > ```+ (void)initialize```
@@ -111,30 +111,30 @@ struct category_t {
 > * 两个函数内部都使用了锁，因此两个函数都是线程安全的；
 
 2. **不同点：**
-> 1. 调用时机不同：`+ (void)load` 在 `main` 函数之前执行，即 `objc_init` Runtime初始化时调用，且只会调用一次, `+ (void)initialize` 在类的方法首次被调用时执行，每个类只会调用一次，但父类可能会调用多次；
-> 2. 调用方式不同：`+ (void)load` 是根据函数地址直接调用，`+ initialize` 是通过消息发送机制即 `objc_msgSend(id self, SEL _cmd, ...)` 调用；
+> 1. 调用时机不同：`+ (void)load` 在 `main` 函数之前执行，即 `objc_init` Runtime初始化时调用，且只会调用一次。 `+ (void)initialize` 在类的方法首次被调用时执行，每个类只会调用一次，但父类可能会调用多次；
+> 2. 调用方式不同：`+ (void)load` 是根据函数地址直接调用，`+ (void)initialize` 是通过消息发送机制即 `objc_msgSend(id self, SEL _cmd, ...)` 调用；
 > 3. 子类父类调用关系不同：
 > > * 如果子类没有实现 `+ (void)load`，则不会调用其父类的 `+ (void)load` 方法。
 > > * 如果子类没有实现 `+ (void)initialize`，则会调用其父类的方法，因此父类的 `+ (void)initialize` 可能会调用多次；
-> 4. 分类 `Category` 对调用的影响不同：
-> > * 如果 `Category` 中实现了 `+ (void)load`，则会优先调用原类的的 `+ (void)load`，再调用分类的，即优先级为：父类 > 原类 > 分类
-> > > 1. 没有继承关系的不同类中的 `+ (void)load` 的调用顺序跟Compile Sources顺序有关，即在前面的优先编译的类或者分类先调用（ **备注：** 所有类的 `+ (void)load` 优先级大于分类的优先级）；
-> > > 2. 同一个类的分类 `+ (void)load` 的调用顺序跟Compile Sources顺序有关，即在前面的优先编译的分类会先调用；
-> > > 3. 同一镜像中主工程的 `+ (void)load` 方法优先调用，然后再调用静态库的 `+ (void)load` 方法。有多个静态库时，静态库之间的执行顺序与编译顺序有关，即它们在Link Binary With Libraries中的顺序；
-> > > 4. 不同镜像中，动态库的 `+ (void)load` 方法优先调用，然后再调用主工程的 `+ (void)load`，多个动态库的 `+ (void)load` 方法的调用顺序跟编译顺序有关，即它们在Link Binary With Libraries中的顺序；
+> 4. 类别 `category` 对调用的影响不同：
+> > * 如果 `category` 中实现了 `+ (void)load`，则会优先调用原类的的 `+ (void)load`，再调用 `category` 的，即优先级为：父类 > 原类 > `category`
+> > > 1. 没有继承关系的不同类中的 `+ (void)load` 的调用顺序跟 `Compile Sources` 顺序有关，即在前面的优先编译的类或者 `category` 先调用（ **备注：** 所有类的 `+ (void)load` 优先级大于 `category` 的优先级）；
+> > > 2. 同一个类的 `category` 的 `+ (void)load` 的调用顺序跟 `Compile Sources` 顺序有关，即在前面的优先编译的 `category` 会先调用；
+> > > 3. 同一镜像中主工程的 `+ (void)load` 方法优先调用，然后再调用静态库的 `+ (void)load` 方法。有多个静态库时，静态库之间的执行顺序与编译顺序有关，即它们在 `Link Binary With Libraries` 中的顺序；
+> > > 4. 不同镜像中，动态库的 `+ (void)load` 方法优先调用，然后再调用主工程的 `+ (void)load`，多个动态库的 `+ (void)load` 方法的调用顺序跟编译顺序有关，即它们在 `Link Binary With Libraries` 中的顺序；
 
-> > * 如果 `Category` 中实现了 `+ (void)initialize`，则原类的 `+ (void)initialize` 将不会再调用
-> > > 1. 多个 `Category` 中同时实现了 `+ (void)initialize` 方法时，Compile Sources中顺序最下面的一个，即最后一个被编译分类的 `+ (void)initialize` 会执行；
+> > * 如果 `category` 中实现了 `+ (void)initialize`，则原类的 `+ (void)initialize` 将不会再调用
+> > > 1. 多个 `category` 中同时实现了 `+ (void)initialize` 方法时，Compile Sources中顺序最下面的一个，即最后一个被编译 Category 的 `+ (void)initialize` 会执行；
 
-### 分类 `Category` 中添加关联对象
+### **类别 `Category` 中添加关联对象**
 
-`Category` 中添加属性 `@property` 在前文已做过简单介绍，具体可查看 [iOS探究属性@property](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)，这里我们重点说一下关联对象的实现原理：
+`Category` 中添加属性 `@property` 在前文已做过简单介绍，具体可查看 [iOS 属性 @property 详细探究](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/iOSTechTeam_01.md)，这里我们重点说一下关联对象的实现原理：
 
 操作关联对象有三个核心方法：
 1. 设置关联对象方法：
 > objc_setAssociatedObject(id _Nonnull object, const void * _Nonnull key, id _Nullable value, objc_AssociationPolicy policy)
 > > * 1. id _Nonnull object: 给哪个对象添加关联对象，通常是当前对象，即用 `self` 即可；
-> > * 2. const void * _Nonnull key: 关联对象的 `key`，作为管理对象的唯一标识存在，它只要是一个非空指针即可；
+> > * 2. const void * _Nonnull key: 关联对象的 `key`，作为关联对象的唯一标识存在，它只要是一个非空指针即可；
 > > * 3. id _Nullable value: 关联对象的值，通过关联 `key` 进行设值及获取值，如果需要清除一个已存在的关联对象，将其值设置为 `nil` 即可；
 > > * 4. objc_AssociationPolicy policy: 关联策略，即关联对象的存储形式，其可选枚举值如下：
 ``` 
@@ -211,7 +211,7 @@ _object_set_associative_reference(id object, const void *key, id value, uintptr_
     association.releaseHeldValue();
 }
 ```
-根据上述源码可以发现，`ObjcAssociation` 根据 传入的 `value` 及 `policy` 创建对象，并经过 `acquireValue` 函数处理生成新的 `_value` 。`acquireValue` 函数内部是通过对策略 `policy` 的判断进行相应处理，生成新值，其实现如下：
+根据上述源码可以发现，`ObjcAssociation` 根据传入的 `value` 及 `policy` 创建对象，并经过 `acquireValue` 函数处理生成新的 `_value` 。`acquireValue` 函数内部是通过对策略 `policy` 的判断进行相应处理，生成新值，其实现如下：
 ```
 inline void acquireValue() {
     if (_value) {
@@ -248,7 +248,7 @@ public:
 ```
 由源码可以知道，`AssociationsManager` 是以 `DisguisedPtr<objc_object>` 即一个指针地址作为 `key`，以 `ObjectAssociationMap` 即一个关联表作为 `value` 的哈希表来使用的。其内部是使用一个全局静态变量 `static Storage _mapStorage` 来存储程序中所有的关联对象。
 
-这里重点介绍一下全局静态变量 `static Storage _mapStorage` 的初始化时机，App启动过程中，在 `_objc_init` 函数中会调用 `void _dyld_objc_notify_register(_dyld_objc_notify_mapped    mapped, _dyld_objc_notify_init init, _dyld_objc_notify_unmapped  unmapped)`，具体如下：
+这里重点介绍一下全局静态变量 `static Storage _mapStorage` 的初始化时机。App 启动过程中，在 `_objc_init` 函数中会调用 `void _dyld_objc_notify_register(...)`，具体如下：
 
 ```
 void _objc_init(void)
@@ -263,13 +263,13 @@ void _objc_init(void)
 
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/dyld_objc_notify_register.png)
 
-回调函数会在所有镜像文件初始化完成之后，回调 `map_images(unsigned count, const char * const paths[], const struct mach_header * const mhdrs[])` 函数，详细调用流程如下图：
+回调函数会在所有镜像文件初始化完成之后，回调 `map_images(unsigned count, const char * const paths[], const struct mach_header * const mhdrs[])` 函数。详细调用流程如下图：
 
 
 **备注：图中已对无关代码进行删减，仅用来展示调用流程**
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/objc_associations_init.png)
 
-从上图我们就知道了，在App启动过程中 `AssociationsManager` 中的静态变量 `static Storage _mapStorage` 的初始化时机。在App启动之后，所有用到关联对象的地方，程序都是从这个全局静态变量 `_mapStorage` 中获取 `AssociationsHashMap` 来对关联对象进行进一步处理。
+从上图我们可以知道，在 App 启动过程中 `AssociationsManager` 中的静态变量 `static Storage _mapStorage` 的初始化时机。在 App 启动之后，所有用到关联对象的地方，程序都是从这个全局静态变量 `_mapStorage` 中获取 `AssociationsHashMap` 来对关联对象进行进一步处理。
 
 在 `AssociationsManager` 中，我们可以看到是由一个 `AssociationsManagerLock` 叫做 `spinlock_t` 的互斥锁：
 
@@ -308,9 +308,9 @@ auto refs_result = associations.try_emplace(disguised, ObjectAssociationMap{});
   }
 ```
 
-首先根据传来的 `key` 即 `disguised` 在 `AssociationsHashMap` 中查找对应的 `ObjectAssociationMap` 是否已在映射表中，如果不在则将键插入，如果键不在，则创建一个 `BucketT` 即一个空的桶。在第二次调用 `try_emplace` 时将 `ObjcAssociation` （里面包含了 `_policy` 和 `_value` ）存储到这个 `BucketT` 空桶中。
+首先根据传来的 `key` 即 `disguised` 在 `AssociationsHashMap` 中查找对应的 `ObjectAssociationMap` 是否已在映射表中，如果不在则将元素插入。如果键不在，则创建一个 `BucketT` 即一个空的桶。在第二次调用 `try_emplace` 时将 `ObjcAssociation` （里面包含了 `_policy` 和 `_value` ）存储到这个 `BucketT` 空桶中。
 
-当设置的关联 `value` 为空的时候会进入 `if` 判断的 `else` 里面：
+当设置的关联 `value` 为空 `nil` 的时候会进入 `if` 判断的 `else` 里面：
 ```
 auto refs_it = associations.find(disguised);
 if (refs_it != associations.end()) {
@@ -333,16 +333,16 @@ if (refs_it != associations.end()) {
 > > * 1. id _Nonnull object: 获取哪个对象里面的关联对象；
 > > * 2. const void * _Nonnull key: 关联对象的 `key` ，与 `objc_setAssociatedObject` 中的 `key` 相对应，通过 `key` 值取出 `value` 即关联对象；
 
-其内部调用的是 `_object_get_associative_reference` 内部具体实现如下：
+其内部调用的是 `_object_get_associative_reference` ，内部具体实现如下：
 
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/object_get_associative_reference.png)
 
-如果我们理解了设置关联对象的过程，上面的代码理解起来就比较简单了，从全局的 `AssociationsHashMap` 中取得 `object` 对象对应的 `ObjectAssociationMap` ，然后根据 `key` 从 `ObjectAssociationMap` 获取对应的 `ObjcAssociation` ，然后根据关联策略 `_policy` 判断是否需要对 `_value` 执行 `retain` 操作，最后根据关联策略 `_policy` 判断是否需要将 `_value` 添加到自动释放池，并返回 `_value`。
+如果我们理解了设置关联对象的过程，上面的代码理解起来就比较简单了，从全局的 `AssociationsHashMap` 中取得 `object` 对象对应的 `ObjectAssociationMap` ，然后根据 `key` 从 `ObjectAssociationMap` 获取对应的 `ObjcAssociation` ，然后根据关联策略 `_policy` 判断是否需要对 `_value` 执行 `retain` 操作。最后根据关联策略 `_policy` 判断是否需要将 `_value` 添加到自动释放池，并返回 `_value`。
 
 3. 移除关联对象：
 上面已经提到，如果想要清除某一个特定关联对象，设置关联对象的 `value` 为 `nil` 即可。如果想要移除所有关联对象，则可以使用：
 > objc_removeAssociatedObjects(id _Nonnull object)
-> > * 1. id _Nonnull object: 移除给定对象的所有关联对象
+> > * 1. id _Nonnull object: 移除指定对象的所有关联对象
 
 其内部实现代码如下：
 
@@ -359,17 +359,17 @@ if (refs_it != associations.end()) {
 那什么时候会调用 `objc_destructInstance` 函数呢？带着这个疑问，我查了一下源码，这里简单说一下调用流程，后续会专门针对 `dealloc` 写相关文章，其大体流程如下：
 
 ![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_03/dealloc.png)
-图中函数调用流程非常清晰，此处不做过多解释，所以，我们知道解除关联对象是在源对象 `dealloc` 时进行的。
+图中函数调用流程非常清晰，此处不做过多解释。由此，我们知道解除关联对象是在源对象 `dealloc` 时进行的。
 
 
 ---
 ### **拓展知识**
-1. iOS中变量修饰词@public、@protected、@package、@private的作用：
-> @package // 常用于框架类的实例变量，使用@private太限制，使用@protected或者@public又太开放，这时可以使用@pakage
+1. iOS 中变量修饰词 @public、@protected、@package、@private 的作用：
+> @package // 常用于框架类的实例变量，使用 @private 太限制，使用 @protected 或者 @public 又太开放，这时可以使用 @pakage
 >
-> @private // 作用范围只能在自身类，即使子类也无法使用，但分类及扩展类中可以使用
+> @private // 作用范围只能在自身类，即使子类也无法使用，但 category 及 extension 类中可以使用
 >
-> @protected // 系统默认为@protected，作用范围在自身类及子类
+> @protected // 系统默认为 @protected，作用范围在自身类及子类
 >
 > @public // 公开类型，作用域大，只要能拿到所属实例对象就可以使用
 >
@@ -381,16 +381,16 @@ if (refs_it != associations.end()) {
 ```
 @interface Person : NSObject {
 @package
-    NSString *_country; // 框架内拿到Person及其子类的实例变量都可以使用
+    NSString *_country; // 框架内拿到 Person 及其子类的实例变量都可以使用
 
 @protected
-    NSString *_birthday; // 只能在自身类及子类中使用，包括分类及扩展
+    NSString *_birthday; // 只能在自身类及子类中使用，包括 category 及 extension
 
 @private
-    NSString *_weight; // 只能在自身类中使用，包括分类及扩展
+    NSString *_weight; // 只能在自身类中使用，包括 category 及 extension
 
 @public
-    NSString *_height; // 全局任意拿到Person及其子类实例变量的地方都可以使用
+    NSString *_height; // 全局任意拿到 Person 及其子类实例变量的地方都可以使用
 }
 ```
 具体实例如下： `Son` 继承自 `Person`：
@@ -409,7 +409,7 @@ if (refs_it != associations.end()) {
 ---
 ### **总结**
 
-分类 `Category` 和扩展 `Extension` 涉及到的东西还是挺多的，这里仅对其核心要关注的一些点进行了详细介绍，另外还有关于 `Category` 装载的过程，希望对你我能有所帮助，感谢阅读。
+类别 `category` 和扩展 `extension` 涉及到的东西还是挺多的，这里仅对其核心要关注的一些点进行了详细介绍。另外还有关于 `category` 装载的过程，有兴趣的同学可以查阅一下。希望本文对你我能有所帮助，感谢阅读。
 
 ---
 ### **参考资料：**
