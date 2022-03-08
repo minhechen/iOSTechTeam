@@ -1,11 +1,17 @@
-# iOS Teach Team iOS中的空 nil, Nil, NULL, NSNull, kCFNulL 及空修饰符 nullable, __nullable, _Nullable, nonnull, __nonnull, __Nonnull 详细解读
+# iOS Teach Team iOS中的 Nullability 即 nil, Nil, NULL, NSNull, kCFNulL 及空修饰符 nullable, __nullable, _Nullable, nonnull, __nonnull, __Nonnull 详细解读
 
-### 引言
+### **引言**
 
 日常开发过程中，我们经常会碰到空值、空指针、空对象、空的占位对象等。在一些情况下，如果判断不好或者处理方式不对，可能会引起程序运行异常，有些特殊情况甚至会导致 Crash ，因此，熟练了解掌握它们之间的区别，将有助于我们写出更高质量的代码，本文就详细介绍一下它们之间的差别与注意事项。
 
 ---
-### **常用介绍**
+### **`Nullability` 的由来**
+
+在 `Swift` 中，我们会使用 ? 和 ! 去显式声明一个对象、函数的的参数及函数的返回值是 `optional` 还是 `non-optional` ，而在 `Objective-C` 中则没有这一区分。当我们在 `Swift` 与 `Objective-C` 混编开发时，由于 `Swift` 编译器并不知道这个 `Objective-C` 对象、函数的参数或者函数的返回值是  `optional` 还是 `non-optional` ，这种情况下编译器会隐式地都当成是 `non-optional` 来处理，所以经常性的会因为把一个空值当做 `non-optional` 来处理而导致程序 Crash。
+
+因此为了解决这个问题，苹果在 `Xcode 6.3` 引入了一个为 `C` 及 `Objective-C` 的新特性： `Nullability Annotations` 。
+> Nullability annotations for C and Objective-C are available starting in Xcode 6.3
+
 
 #### **空值相关**
 
@@ -125,7 +131,7 @@ const CFNullRef kCFNull;	// the singleton null instance
 
 * null_unspecified & __null_unspecified & _Null_unspecified 
 
-其中 `null_resettable` ，`getter` 不能返回空，`setter` 可以为空(**注意：** 使用 `null_resettable` 必须重写 `getter` 方法和 `setter` 方法，处理传递的值为空的情况)。
+其中 `null_resettable` ，`getter` 不能返回空，`setter` 可以为空(**注意：** 使用 `null_resettable` 必须重写 `getter` 方法和 `setter` 方法，处理值为空的情况)。
 
 其中 `null_unspecified` ，`__null_unspecified` ， `_Null_unspecified` ， 表示不确定是否为空。
 
@@ -150,12 +156,71 @@ const CFNullRef kCFNull;	// the singleton null instance
 
 **注意：**
 
-1. 其中关键词 `nonnull` ，`nullable` ，`null_resettable` ， `_Null_unspecified` 只能修饰对象，不能修饰基本数据类型。
+1. 可控性关键词 `nonnull` ，`nullable` 等只能修饰对象，不能修饰基本数据类型。
 2. 在`NS_ASSUME_NONNULL_BEGIN` 和 `NS_ASSUME_NONNULL_END` 之间，定义的所有对象属性和方法默认都是 `nonnull` 。
-
 
 ---
 ### 拓展知识
+
+1. `isEqual:`，`isEqualToString:` 及 `==` 的区别
+
+* `==`：判断两个对象的内存地址是否相等，相等则返回 YES，不相等则返回 NO；
+* `isEqual:` NSObject 及其子类中指定 isEqual: 方法来确定两个对象是否相等。在它的基本实现中，相等检查只是简单地判断相等标识，如下：
+    ```
+    - (BOOL)isEqual: (id)other {
+        return self == other;
+    }
+    ```
+    然而，一些 `NSObject` 的子类重写了 `isEqual:`，因此它们各自重新定义了相等的标准：
+
+    * 如果一个对象最重要的事情是它的状态，那么它被称为值类型，它的 `observable` 属性被用来确定是否相等。
+
+    * 如果一个对象最重要的事情是它的标识，那么它被称为引用类型，它的内存地址被用来确定是否相等。
+    
+    在 Foundation 框架中，下面这些 `NSObject` 的子类都有自己的相等性检查实现，只要看看它们的 `isEqualToClassName:` 方法就知道了。它们在 `isEqualToClassName:` 中确定是否相等时，相应类型的对象都遵循值语义，当需要对它们的两个实例进行比较时，推荐使用这些高级方法而不是直接使用  `isEqual:` 进行比较。具体类及方法如下：
+
+    * `NSValue -isEqualToValue:`
+    * `NSArray -isEqualToArray:`
+    * `NSAttributedString -isEqualToAttributedString:`
+    * `NSData -isEqualToData:`
+    * `NSDate -isEqualToDate:`
+    * `NSDictionary -isEqualToDictionary:`
+    * `NSHashTable -isEqualToHashTable:`
+    * `NSIndexSet -isEqualToIndexSet:`
+    * `NSNumber -isEqualToNumber:`
+    * `NSOrderedSet -isEqualToOrderedSet:`
+    * `NSSet -isEqualToSet:`
+    * `NSString -isEqualToString:`
+    * `NSTimeZone -isEqualToTimeZone:`
+    
+    **注意：** `isEqualToClassName:` 方法不接受 `nil` 作为参数，如传 `nil` 编译器会给出警告，而 `isEqual:` 接受(如果传入 `nil` 则返回 `NO` )。
+
+* `isEqualToString:` NSString 是一个很特殊的类型，先看下面代码:
+```
+NSString *a = @"Hello";
+NSString *b = @"Hello";
+
+// YES
+if (a == b) {
+    NSLog(@"a == b is Yes"); 
+}
+
+// YES
+if ([a isEqual:b]) {
+    NSLog(@"a isEqual b is Yes");
+}
+
+// YES
+if ([a isEqualToString:b]) {
+    NSLog(@"a isEqualToString b is Yes"); 
+}
+```
+会发现上面的三种判断都是 YES ，为什么 `==` 判断也是 YES ？
+
+这是因为苹果采用了 **字符串驻留（String Interning）** 的优化技术。在这种情况下，创建的字符串在内部被视为字符串字面量。运行时不会为这些字符串分配不同的内存空间。
+> **注意：** 所有这些针对的都是静态定义的不可变字符串。
+
+另外， `Objective-C` 选择器的名字也是作为驻留字符串储存在一个共享的字符串池当中。对于通过来回传递消息来操作的语言来说，这是一个重要的优化。能够通过指针是否相等来快速检查字符串对运行时性能有很大的影响。
 
 ---
 ### 总结
@@ -171,3 +236,5 @@ const CFNullRef kCFNull;	// the singleton null instance
 [nil / Nil / NULL / NSNull](https://nshipster.cn/nil/)
 
 [Difference between nullable, __nullable and _Nullable in Objective-C](https://stackoverflow.com/questions/32452889/difference-between-nullable-nullable-and-nullable-in-objective-c)
+
+[Implementing Equality and Hashing](https://www.mikeash.com/pyblog/friday-qa-2010-06-18-implementing-equality-and-hashing.html)
