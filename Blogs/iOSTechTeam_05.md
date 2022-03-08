@@ -222,6 +222,110 @@ if ([a isEqualToString:b]) {
 
 另外， `Objective-C` 选择器的名字也是作为驻留字符串储存在一个共享的字符串池当中。对于通过来回传递消息来操作的语言来说，这是一个重要的优化。能够通过指针是否相等来快速检查字符串对运行时性能有很大的影响。
 
+* Tagged Pointers
+
+Tagged Pointer 功能主要有如下三点：
+1. Tagged Pointer 用于存储小对象，例如 NSNumber ，NSString 和 NSDate 等；
+2. Tagged Pointer 值不再是地址，而是实际值。因此，它不再是真正的对象，它只是一个伪指针，一个 64 位的二进制。因此，它的内存不存储在堆中，不需要 malloc 和 free ；
+3. 内存读取效率提高 3 倍，创建速度提高 106 倍；
+
+OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代码中没有使用 Tagged Pointer 对象，尽管在原则上这并不是不可能。开源的 `objc4-818.2/runtime/objc-internal.h` 有详细的定义及介绍:
+```
+{
+    // 60-bit payloads
+    OBJC_TAG_NSAtom            = 0, 
+    OBJC_TAG_1                 = 1, 
+    OBJC_TAG_NSString          = 2, 
+    OBJC_TAG_NSNumber          = 3, 
+    OBJC_TAG_NSIndexPath       = 4, 
+    OBJC_TAG_NSManagedObjectID = 5, 
+    OBJC_TAG_NSDate            = 6,
+
+    // 60-bit reserved
+    OBJC_TAG_RESERVED_7        = 7, 
+
+    // 52-bit payloads
+    OBJC_TAG_Photos_1          = 8,
+    OBJC_TAG_Photos_2          = 9,
+    OBJC_TAG_Photos_3          = 10,
+    OBJC_TAG_Photos_4          = 11,
+    OBJC_TAG_XPC_1             = 12,
+    OBJC_TAG_XPC_2             = 13,
+    OBJC_TAG_XPC_3             = 14,
+    OBJC_TAG_XPC_4             = 15,
+    OBJC_TAG_NSColor           = 16,
+    OBJC_TAG_UIColor           = 17,
+    OBJC_TAG_CGColor           = 18,
+    OBJC_TAG_NSIndexSet        = 19,
+    OBJC_TAG_NSMethodSignature = 20,
+    OBJC_TAG_UTTypeRecord      = 21,
+
+    // When using the split tagged pointer representation
+    // (OBJC_SPLIT_TAGGED_POINTERS), this is the first tag where
+    // the tag and payload are unobfuscated. All tags from here to
+    // OBJC_TAG_Last52BitPayload are unobfuscated. The shared cache
+    // builder is able to construct these as long as the low bit is
+    // not set (i.e. even-numbered tags).
+    OBJC_TAG_FirstUnobfuscatedSplitTag = 136, // 128 + 8, first ext tag with high bit set
+
+    OBJC_TAG_Constant_CFString = 136,
+
+    OBJC_TAG_First60BitPayload = 0, 
+    OBJC_TAG_Last60BitPayload  = 6, 
+    OBJC_TAG_First52BitPayload = 8, 
+    OBJC_TAG_Last52BitPayload  = 263,
+
+    OBJC_TAG_RESERVED_264      = 264
+}
+```
+本质上来说 Tagged Pointer 就是 Tag + Data 组合的一个内存占用 8 个字节 64 位的伪指针：
+* Tag 为特殊标记，用于区分是否是 Tagged Pointer 指针以及区分 NSNumber、NSDate、NSString 等对象类型；
+* Data 为对象对应存储的值。
+
+在运行效率上，很多涉及 Tagged Pointer 类型相关功能，苹果都有针对性的进行了优化，因此执行起来效率特别高，具体可在源码中搜索 `isTaggedPointer` 进一步查看。
+
+另外，在源码 objc-runtime-new.mm 中有一段注释对 Tagged pointer objects 进行了解释，具体如下：
+```
+/***********************************************************************
+* Tagged pointer objects.
+*
+* Tagged pointer objects store the class and the object value in the 
+* object pointer; the "pointer" does not actually point to anything.
+* 
+* Tagged pointer objects currently use this representation:
+* (LSB)
+*  1 bit   set if tagged, clear if ordinary object pointer
+*  3 bits  tag index
+* 60 bits  payload
+* (MSB)
+* The tag index defines the object's class. 
+* The payload format is defined by the object's class.
+*
+* If the tag index is 0b111, the tagged pointer object uses an 
+* "extended" representation, allowing more classes but with smaller payloads:
+* (LSB)
+*  1 bit   set if tagged, clear if ordinary object pointer
+*  3 bits  0b111
+*  8 bits  extended tag index
+* 52 bits  payload
+* (MSB)
+*
+* Some architectures reverse the MSB and LSB in these representations.
+*
+* This representation is subject to change. Representation-agnostic SPI is:
+* objc-internal.h for class implementers.
+* objc-gdb.h for debuggers.
+**********************************************************************/
+```
+详细介绍此处就不在翻译，重点说一下：
+* 1 bit 用来标识是否是 Tagged Pointer；
+* 3 bits 用来标识类型；
+* 60 bits 负载数据容量 即存储对象数据；
+
+**注意：** 此处不对 Tagged Pointer 实现原理做详细介绍，有兴趣的同学可以 Google 一下 Tagged Pointer，有很多大神介绍的非常详尽。
+
+由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们调用 Tagged Pointer 对应的 isa 指针时，程序会报错，比如调用 `isKindOfClass`
+
 ---
 ### 总结
 
