@@ -73,7 +73,7 @@ struct category_t {
 
 
 ---
-**类的扩展Extension：**
+**类的扩展 Extension：**
 
 ```
 @interface Person ()
