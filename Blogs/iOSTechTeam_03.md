@@ -1,4 +1,4 @@
-# iOS Teach Team iOS 类别 Category 与扩展 Extension 详解
+# iOS Teach Team iOS 类别 Category 和 扩展 Extension 及关联对象详解
 
 ### **引言**
 
@@ -365,7 +365,8 @@ if (refs_it != associations.end()) {
 
 ---
 ### **拓展知识**
-1. iOS 中变量修饰词 @public、@protected、@package、@private 的作用：
+1. iOS 中变量修饰词 `@public`、`@protected`、`@package`、`@private` 的作用：
+
 > @package // 常用于框架类的实例变量，使用 @private 太限制，使用 @protected 或者 @public 又太开放，这时可以使用 @package
 >
 > @private // 作用范围只能在自身类，即使子类也无法使用，但 category 及 extension 类中可以使用

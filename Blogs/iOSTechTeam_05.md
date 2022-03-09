@@ -324,7 +324,7 @@ OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代�
 
 **注意：** 此处不对 Tagged Pointer 实现原理做详细介绍，有兴趣的同学可以 Google 一下 Tagged Pointer，有很多大神介绍的非常详尽。
 
-由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们调用 Tagged Pointer 对应的 isa 指针时，程序会报错，比如调用 `isKindOfClass`
+由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们调用 Tagged Pointer 对应的 `isa` 指针时，程序会报错，比如调用 `isKindOfClass`
 
 ---
 ### 总结
