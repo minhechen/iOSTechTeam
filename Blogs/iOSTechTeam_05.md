@@ -324,7 +324,11 @@ OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代�
 
 **注意：** 此处不对 Tagged Pointer 实现原理做详细介绍，有兴趣的同学可以 Google 一下 Tagged Pointer，有很多大神介绍的非常详尽。
 
-由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们调用 Tagged Pointer 对应的 `isa` 指针时，程序会报错，比如调用 `isKindOfClass`
+由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们通过 LLDB 打印 Tagged Pointer 对应的 `isa` 指针时，程序会报错错误提示：
+> error: Couldn't apply expression side effects : Couldn't dematerialize a result variable: couldn't read its memory
+
+而当针对 Tagged Pointer 需用使用到类似 Objecttive-C 对象的 isa 指针功能时，可以通过调用 `isKindOfClass` 和 `object_getClass` 实现判断及其他操作。
+
 
 ---
 ### 总结
