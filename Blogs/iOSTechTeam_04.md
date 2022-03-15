@@ -37,7 +37,7 @@
 
 1. @synchronized 是一个互斥递归锁：
 
-递归锁也称为可重入锁。**互斥锁**可以分为**非递归锁/递归锁**两种，**主要区别在于:** 同一个线程可以重复获取递归锁，不会死锁; 同一个线程重复获取非递归锁，则会产生死锁。
+**递归锁**也称为可重入锁。**互斥锁**可以分为**非递归锁/递归锁**两种，主要区别在于： 同一个线程可以重复获取递归锁，不会死锁; 同一个线程重复获取非递归锁，则会产生死锁。
 
 通常使用方式如下：
 
@@ -52,7 +52,7 @@
 > 2. 要加锁的操作
 > 3. objc_sync_exit(id obj) // 具体执行源码在下面
 
-`@synchronized` 是一个互斥锁->递归锁，内部搭配 `nil` 防止死锁，通过表的结构存要锁的对象,表内部的对象又是通过哈希存储的
+`@synchronized` 是一个互斥锁->递归锁，内部搭配 `nil` 防止死锁，通过表的结构存要锁的对象，表内部的对象又是通过哈希存储的。
 
 `objc_sync_enter(id obj)` 源码：
 
@@ -108,7 +108,7 @@ int objc_sync_exit(id obj)
 
 **注意点：** 
 
-1. 在多线程异步同时操作同一个对象时，因为递归锁会不停的 `objc_sync_enter(id obj)` ，有些特殊场景下 `obj` 对象可能会为 `nil` ，而此时 `objc_sync_enter(id obj)` 内部会进行判断，如果 `obj==nil` ，就不会再加锁，进而导致线程访问冲突。
+1. 在多线程异步同时操作同一个对象时，因为递归锁会不停的 `objc_sync_enter(id obj)` ，有些特殊场景下 `obj` 对象可能会为 `nil` ，而此时 `objc_sync_enter(id obj)` 内部会进行判断，如果 `obj == nil` ，就不会再加锁，进而导致线程访问冲突。
 2. 如果多线程中 `@synchronized (obj)` 传入的 `obj` 不相同，即一个新的 `obj` ，那么线程每次都将会拥有它的锁，并持续处理，中间不会被其他线程阻塞。
 
 下面着重介绍一下 `SyncData` 的存取过程，即 `id2data(obj, ACQUIRE)` ，在介绍代码调用流程之前，先看一下几个结构体：
@@ -279,7 +279,7 @@ static SyncData* id2data(id object, enum usage why)
 
 2. 第二步：线程缓存
 
-快速缓存没找到，则从线程缓存中中查找，如果匹配到对象，根据 `usage` 枚举值进行相应操作，然后返回 `result` 。
+快速缓存没找到，则从线程缓存中查找，如果匹配到对象，根据 `usage` 枚举值进行相应操作，然后返回 `result` 。
 
 ```
 // 检查已拥有锁的每个线程缓存以查找匹配对象
@@ -366,7 +366,7 @@ result->nextData = *listp;
 *listp = result;
 ```
 
-4. 第四步：Done 保存 SyncData 对象
+4. 第四步：`done` 保存 `SyncData` 对象
 
 ```    
  done:
@@ -409,11 +409,11 @@ result->nextData = *listp;
 ```
 这里解释一下 `_objc_fatal` ，如果是 `Debug` 环境下，App不会崩溃，但会调用 `_objc_syslog` 打印日志，之后调用 `_Exit(1)` 正常退出程序执行。
 
-如果是 `release` 环境下，则会调用 `_objc_crashlog` 将信息添加到崩溃日志中，然后调用 `abort_with_reason` 函数来中断程序运行
+如果是 `release` 环境下，则会调用 `_objc_crashlog` 将信息添加到崩溃日志中，然后调用 `abort_with_reason` 函数来中断程序运行。
 
 **2. pthread_mutex 互斥锁**
 
-在 `POSIX`（Portable Operating System Interface：可移植操作系统）中，`pthread_mutex` 是一套用于多线程同步的 `mutex` 锁，如同名一样，使用起来非常简单，性能比较高，`pthread_mutex` 不是使用忙等，而是同信号量一样，会阻塞线程并进行等待，调用时进行线程上下文切换。
+在 `POSIX`（Portable Operating System Interface：可移植操作系统）中，`pthread_mutex` 是一套用于多线程同步的 `mutex` 锁，如同名一样，使用起来非常简单，性能比较高。`pthread_mutex` 不是使用忙等，而是同信号量一样，会阻塞线程并进行等待，调用时进行线程上下文切换。
 
 ```
 // 导入头文件
@@ -465,7 +465,7 @@ pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_NORMAL);
 
 **3. NSLock 互斥锁**
 
-`NSLock` 底层是对 `pthread_mutex` 的一层封装，其性能比 `pthread_mutex` 略慢，但由于缓存的存在，多次调用并不会对性能参数太大影响。
+`NSLock` 底层是对 `pthread_mutex` 的一层封装，其性能比 `pthread_mutex` 略差。但由于缓存的存在，多次调用并不会对性能参数太大影响。
 
 
 `NSLock` 源码在 `CoreFundation` 框架中，无法进行查看，但 `swift` 版本开源的 `CoreFoundation` 中我们可以看到关于 `NSLock` 的完整定义 [NSLock.swift](https://github.com/apple/swift-corelibs-foundation/blob/ce2827f06ca218fcb8756d9f0bc086b9746dffbe/Sources/Foundation/NSLock.swift)。
@@ -534,7 +534,7 @@ open class NSLock: NSObject, NSLocking {
 ```
 从代码可见，`NSLock` 还有对 `timeout` 超时控制，需要注意的是 `NSLock` 并不支持递归调用，即同一个线程不支持锁两次，如果出现递归调用则会造成死锁。如果需要实现递归调用，可以使用 `NSRecursiveLock` 。
 
-**4. NSRecursiveLock 互斥锁**
+**4. NSRecursiveLock 递归锁**
 
 同 `NSLock` 类似，我们也可以在 [NSLock.swift](https://github.com/apple/swift-corelibs-foundation/blob/ce2827f06ca218fcb8756d9f0bc086b9746dffbe/Sources/Foundation/NSLock.swift) 中查看 `NSRecursiveLock` 的完整定义：
 ```
@@ -614,7 +614,7 @@ withUnsafeMutablePointer(to: &attrib) { attrs in
 }
 ```
 
-**5. NSCondition 互斥锁**
+**5. NSCondition 条件锁**
 
 ```
 private typealias _MutexPointer = UnsafeMutablePointer<pthread_mutex_t>
@@ -674,7 +674,7 @@ open class NSCondition: NSObject, NSLocking {
 其中 `wait` 操作会阻塞线程，使线程进入休眠状态，如果超时则返回 `false`。 `signal` 操作会唤醒一个正在休眠等待的线程。而 `broadcast` 会唤醒所有正在等待的线程。
 
 
-**6. NSConditionLock 互斥锁**
+**6. NSConditionLock 条件锁**
 
 ```
 open class NSConditionLock : NSObject, NSLocking {
@@ -758,7 +758,7 @@ open class NSConditionLock : NSObject, NSLocking {
 ```
 可以看到，`NSConditionLock` 是对 `NSCondition` 的进一步封装，增加了 `Int` 类型的 `_value` 条件变量，可以使用 `NSConditionLock` 来实现任务之间的依赖。
 
-**7. dispatch_semaphore 互斥锁**
+**7. dispatch_semaphore 信号量**
 
 `dispatch_semaphore` 常用于保证资源的多线程安全。其本质是基于内核的信号量接口来实现的，是一种基于计数器的多线程同步机制。
 
@@ -890,19 +890,19 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 	return 1;
 }
 ```
-对应信号量的 V 操作，会将 `dsema` 的 `value` 值 +1，如果 `value` 大于 0 直接返回 0，否则进入 `_dispatch_semaphore_signal_slow` 方法，该函数会调用内核的 `semaphore_signal` 函数唤醒等待中的线程。
+对应信号量的 `V` 操作，会将 `dsema` 的 `value` 值 +1，如果 `value` 大于 0 直接返回 0，否则进入 `_dispatch_semaphore_signal_slow` 方法，该函数会调用内核的 `semaphore_signal` 函数唤醒等待中的线程。
 
 `dispatch_semaphore` 常用于实现功能：
 
-> * 可用于保持线程同步，将异步执行任务转换为同步执行任务
+> * 用于保持线程同步，将异步执行任务转换为同步执行任务
 > * 保证线程安全，为线程加锁，相当于自旋锁
 
 值得注意的是，信号量运行效率比自旋锁略低，相对其他锁比较高。因此，在性能要求比较高的场景，信号量是一个优先级比较高的选择。
 
 
-**8. OSSpinLock 互斥锁**
+**8. OSSpinLock 自旋锁**
 
-由于 `OSSpinLock` 不再安全，主要原因发生在低优先级线程拿到锁时，高优先级线程进入忙等 `busy-wait` 状态，占用大量 `CPU` 时间片，从而导致低优先级线程拿不到 `CPU` 时间片，无法完成任务并释放锁，这就造成了任务的优先级反转。
+由于 `OSSpinLock` 不再安全，主要原因发生在低优先级线程拿到锁时，高优先级线程进入忙等 `busy-wait` 状态，占用大量 `CPU` 时间片。从而导致低优先级线程拿不到 `CPU` 时间片，无法完成任务并释放锁，这就造成了任务的优先级反转。
 
 从 iOS 10/macOS 10.12 开始 `OSSpinLock` 被弃用，其替代方案是内部封装了 `os_unfair_lock`，而 `os_unfair_lock` 在加锁时会处于休眠状态，而不是自旋锁的忙等状态。
 
@@ -919,7 +919,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 
 1. 什么是死锁？
 
-当两个以上的运算单元，双方都在等待对方停止执行，已获得系统资源，但是没有一方提前退出时，就称为死锁。
+当两个以上的运算单元，双方都在等待对方停止执行，以获得系统资源，但是没有一方提前退出时，就称为死锁。
 
 2. 什么是 `PV` 操作？
 
