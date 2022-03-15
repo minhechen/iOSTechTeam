@@ -1,8 +1,8 @@
-# iOS Teach Team iOS开发过程中常用的锁
+# iOS Teach Team iOS 常用锁的底层实现及使用详解
 
 ### 引言
 
-在 iOS 开发过程中我们通过异步和多线程来提高程序的运行性能，于此同时多线程安全也就成为了一个我们必须要面对的问题，从安全上来说应该尽量避免资源在线程之间共享，以减少线程间的相互作用，因此线程锁就应运而生。在使用锁的过程中一定要小心，避免造成死锁而引起程序无法正常运行。
+> 在 iOS 开发过程中我们通过异步和多线程来提高程序的运行性能，与此同时多线程安全也就成为了一个我们必须要面对的问题，从安全上来说应该尽量避免资源在线程之间共享，以减少线程间的相互作用，因此线程锁就应运而生。在使用锁的过程中一定要小心，避免造成死锁而引起程序无法正常运行。本文就着重介绍一下 iOS 日常开发中常用的几种锁的底层实现原理及如何使用它们。
 
 ---
 * ### 常用的几种锁
@@ -12,11 +12,11 @@
 > 4. NSRecursiveLock      // 递归锁
 > 5. NSCondition          // 条件锁
 > 6. NSConditionLock      // 条件锁
-> 7. dispatch_semaphore   // 信号量
+> 7. dispatch_semaphore   // 信号量（严格的来说不能算锁）
 > 8. OSSpinLock           // 自旋锁
 
 
-**上面8种类型锁，按照功能来说可以划分为2两种：**
+**按照功能来说上面的锁可以划分为2两种：**
 
 **1. 互斥锁：**
 
@@ -907,6 +907,14 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 从 iOS 10/macOS 10.12 开始 `OSSpinLock` 被弃用，其替代方案是内部封装了 `os_unfair_lock`，而 `os_unfair_lock` 在加锁时会处于休眠状态，而不是自旋锁的忙等状态。
 
 ---
+
+### **性能对比**
+
+最后，借用一下YY大神的性能测试结果图，对比一下各种锁的性能：
+
+![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_04/lock_benchmark.png)
+
+---
 ### **拓展知识**
 
 1. 什么是死锁？
@@ -924,9 +932,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 ---
 ### **总结**
 
-最后，借用一下YY大神的性能测试结果图，对比一下各种锁的性能：
-
-![](https://github.com/minhechen/iOSTechTeam/blob/main/Blogs/resource/iOSTechTeam_04/lock_benchmark.png)
+同步工具是使代码线程安全的一种行之有效的方法，但它们不是万能的。与非线程安全性能相比，锁和其他类型的同步原语使用过多，实际上会降低应用程序的线程性能。在安全性和性能之间找到正确的平衡是一门需要经验的艺术。因此我们在实际开发过程中，需要根据具体需要选择合适的实现方案，已达到性能与安全兼顾的最优解。以上就是本文对 iOS 锁相关知识点的介绍，感谢阅读。
 
 ---
 ### **参考资料：**
@@ -937,7 +943,7 @@ _dispatch_semaphore_signal_slow(dispatch_semaphore_t dsema)
 
 * [互斥锁属性](https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886) ( https://docs.oracle.com/cd/E19253-01/819-7051/6n919hpaf/index.html#sync-26886 )
 
-* [不再安全的 OSSpinLock](https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/)
+* [不再安全的 OSSpinLock](https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/) (https://blog.ibireme.com/2016/01/16/spinlock_is_unsafe_in_ios/)
 
 ---
 ### **关于技术组**
