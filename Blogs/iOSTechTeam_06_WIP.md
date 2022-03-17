@@ -1,4 +1,4 @@
-# iOS Teach Team iOS中的空值
+# iOS Teach Team iOS 集成 Flutter module 解析
 
 ### 引言
 
@@ -10,6 +10,13 @@
 
 ---
 * ### 常用介绍
+
+iOS 工程下执行 `pod install` 报错如下：
+
+> [!] Invalid `Podfile` file: undefined local variable or method `privacy' for #<Pod::Podfile:0x00007f906719e930>.
+
+这种情况通常都是因为 `install_all_flutter_pods(privacy)` 的放置位置不当引起的，可以尝试放到 `pod ***` 最末尾解决。
+
 
 ---
 ### 拓展知识
