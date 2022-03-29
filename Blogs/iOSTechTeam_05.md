@@ -1,4 +1,4 @@
-# iOS Teach Team iOS中的 Nullability 即 nil, Nil, NULL, NSNull, kCFNulL 及空修饰符 nullable, __nullable, _Nullable, nonnull, __nonnull, __Nonnull 详细解读
+# iOS Teach Team iOS 全面理解 Nullability 即 nil, Nil, NULL, NSNull, kCFNulL 及空值修饰符 nullable, __nullable, _Nullable, nonnull, __nonnull, __Nonnull 详细解读
 
 ### **引言**
 
@@ -7,9 +7,9 @@
 ---
 ### **`Nullability` 的由来**
 
-在 `Swift` 中，我们会使用 ? 和 ! 去显式声明一个对象、函数的的参数及函数的返回值是 `optional` 还是 `non-optional` ，而在 `Objective-C` 中则没有这一区分。当我们在 `Swift` 与 `Objective-C` 混编开发时，由于 `Swift` 编译器并不知道这个 `Objective-C` 对象、函数的参数或者函数的返回值是  `optional` 还是 `non-optional` ，这种情况下编译器会隐式地都当成是 `non-optional` 来处理，所以经常性的会因为把一个空值当做 `non-optional` 来处理而导致程序 Crash。
+在 `Swift` 中，我们会使用 `?` 和 `!` 去显式声明一个对象或函数的的参数及函数的返回值是 `optional` 还是 `non-optional` ，而在 Objective-C 中则没有这一区分。当我们在 Swift 与 Objective-C 混编开发时，由于 `Swift` 编译器并不知道这个 Objective-C 对象或函数的参数或者函数的返回值是  `optional` 还是 `non-optional` ，这种情况下编译器会隐式地都当成是 `non-optional` 来处理，所以经常性的会因为把一个空值当做 `non-optional` 来处理而导致程序 Crash。
 
-因此为了解决这个问题，苹果在 `Xcode 6.3` 引入了一个为 `C` 及 `Objective-C` 的新特性： `Nullability Annotations` 。
+因此为了解决这个问题，苹果在 `Xcode 6.3` 为 `C` 及 `Objective-C` 引入了一个新特性： `Nullability Annotations` 。
 > Nullability annotations for C and Objective-C are available starting in Xcode 6.3
 
 
@@ -27,7 +27,7 @@
 #endif
 ```
 
-宏，Objective-C 对象使用，表示对象为空 `(id)0`。常作为对象的空指针和数组的结束标志。
+**宏：** Objective-C 对象使用，表示对象为空 `(id)0`。常作为对象的空指针和数组的结束标志。
 
 
 * Nil 
@@ -42,7 +42,7 @@
 #endif
 ```
 
-宏，Objective-C 类使用，表示类指向空 `(Class)0`，即类指针为空。
+**宏：** Objective-C 类使用，表示类指向空 `(Class)0`，即类指针为空。
 
 
 * NULL
@@ -59,7 +59,7 @@
 #endif
 ```
 
-宏，`C` 语言指针使用，表示空指针 `(void *)0`。常用基本数据类型为空情况。
+**宏：** `C` 语言指针使用，表示空指针 `(void *)0`。常在用基本数据类型为空情况。
 
 * NSNull
 
@@ -71,7 +71,7 @@
 @end
 ```
 
-Objective-C 类，是一个空值的单例对象 `[NSNull null]`，继承自 `NSObject` ，可用于表示不允许空值的集合对象中。
+**Objective-C 类：** 是一个空值的单例对象 `[NSNull null]`，继承自 `NSObject` ，可用于表示不允许空值的集合对象中。
 
 
 * kCFNull
@@ -123,7 +123,7 @@ const CFNullRef kCFNull;	// the singleton null instance
 >
 > 此功能首次在 Xcode 6.3 中使用关键字 __nullable 和 __nonnull 。由于与第三方库的潜在冲突，我们在 Xcode 7 中将它们更改为您在此处看到的 _Nullable 和 _Nonnull。但是，为了与 Xcode 6.3 兼容，我们预定义了宏 __nullable 和 __nonnull 以扩展新名称
 >
-苹果也支持使用没有下户线的写法 `nonnull` ，`nullable` ，于是就有了三种写法。
+苹果也支持使用没有下划线的写法 `nonnull` ，`nullable` ，于是就有了三种写法。
 
 另外我们还会经常看到下面两个关键词：
 
@@ -156,193 +156,65 @@ const CFNullRef kCFNull;	// the singleton null instance
 
 **注意：**
 
-1. 可控性关键词 `nonnull` ，`nullable` 等只能修饰对象，不能修饰基本数据类型。
+1. 可空性关键词 `nonnull` ，`nullable` 等只能修饰对象，不能修饰基本数据类型。
 2. 在`NS_ASSUME_NONNULL_BEGIN` 和 `NS_ASSUME_NONNULL_END` 之间，定义的所有对象属性和方法默认都是 `nonnull` 。
 
 ---
-### 拓展知识
+### **拓展知识**
 
-1. `isEqual:`，`isEqualToString:` 及 `==` 的区别
+* Sending Messages to nil
 
-* `==`：判断两个对象的内存地址是否相等，相等则返回 YES，不相等则返回 NO；
-* `isEqual:` NSObject 及其子类中指定 isEqual: 方法来确定两个对象是否相等。在它的基本实现中，相等检查只是简单地判断相等标识，如下：
-    ```
-    - (BOOL)isEqual: (id)other {
-        return self == other;
-    }
-    ```
-    然而，一些 `NSObject` 的子类重写了 `isEqual:`，因此它们各自重新定义了相等的标准：
+用过 Objective-C 开发的同学应该都非常熟悉这句话，正如官方描述的：
+> In Objective-C, it is valid to send a message to nil—it simply has no effect at runtime. 
 
-    * 如果一个对象最重要的事情是它的状态，那么它被称为值类型，它的 `observable` 属性被用来确定是否相等。
+这说明 `nil` 本身可以足够安全地调用方法而不会崩溃。
 
-    * 如果一个对象最重要的事情是它的标识，那么它被称为引用类型，它的内存地址被用来确定是否相等。
-    
-    在 Foundation 框架中，下面这些 `NSObject` 的子类都有自己的相等性检查实现，只要看看它们的 `isEqualToClassName:` 方法就知道了。它们在 `isEqualToClassName:` 中确定是否相等时，相应类型的对象都遵循值语义，当需要对它们的两个实例进行比较时，推荐使用这些高级方法而不是直接使用  `isEqual:` 进行比较。具体类及方法如下：
+在 `Swift` 中，我们有更多的安全性。我们可以给 `nil` 发“消息”（其实并没有），但前提是它们是链式可选项（chained optional）。只有当我们使用可选时，`nil` 才能成为一个有存在感的“something”。
 
-    * `NSValue -isEqualToValue:`
-    * `NSArray -isEqualToArray:`
-    * `NSAttributedString -isEqualToAttributedString:`
-    * `NSData -isEqualToData:`
-    * `NSDate -isEqualToDate:`
-    * `NSDictionary -isEqualToDictionary:`
-    * `NSHashTable -isEqualToHashTable:`
-    * `NSIndexSet -isEqualToIndexSet:`
-    * `NSNumber -isEqualToNumber:`
-    * `NSOrderedSet -isEqualToOrderedSet:`
-    * `NSSet -isEqualToSet:`
-    * `NSString -isEqualToString:`
-    * `NSTimeZone -isEqualToTimeZone:`
-    
-    **注意：** `isEqualToClassName:` 方法不接受 `nil` 作为参数，如传 `nil` 编译器会给出警告，而 `isEqual:` 接受(如果传入 `nil` 则返回 `NO` )。
+* JSON 数据中带有 null 值情况
 
-* `isEqualToString:` NSString 是一个很特殊的类型，先看下面代码:
-```
-NSString *a = @"Hello";
-NSString *b = @"Hello";
-
-// YES
-if (a == b) {
-    NSLog(@"a == b is Yes"); 
-}
-
-// YES
-if ([a isEqual:b]) {
-    NSLog(@"a isEqual b is Yes");
-}
-
-// YES
-if ([a isEqualToString:b]) {
-    NSLog(@"a isEqualToString b is Yes"); 
-}
-```
-会发现上面的三种判断都是 YES ，为什么 `==` 判断也是 YES ？
-
-这是因为苹果采用了 **字符串驻留（String Interning）** 的优化技术。在这种情况下，创建的字符串在内部被视为字符串字面量。运行时不会为这些字符串分配不同的内存空间。
-> **注意：** 所有这些针对的都是静态定义的不可变字符串。
-
-另外， `Objective-C` 选择器的名字也是作为驻留字符串储存在一个共享的字符串池当中。对于通过来回传递消息来操作的语言来说，这是一个重要的优化。能够通过指针是否相等来快速检查字符串对运行时性能有很大的影响。
-
-* Tagged Pointers
-
-Tagged Pointer 功能主要有如下三点：
-1. Tagged Pointer 用于存储小对象，例如 NSNumber ，NSString 和 NSDate 等；
-2. Tagged Pointer 值不再是地址，而是实际值。因此，它不再是真正的对象，它只是一个伪指针，一个 64 位的二进制。因此，它的内存不存储在堆中，不需要 malloc 和 free ；
-3. 内存读取效率提高 3 倍，创建速度提高 106 倍；
-
-OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代码中没有使用 Tagged Pointer 对象，尽管在原则上这并不是不可能。开源的 `objc4-818.2/runtime/objc-internal.h` 有详细的定义及介绍:
+解析 `JSON` 数据时，如果接口返回数据中把 `NSNull` 传给我们，解析出来就是 `null` 空对象，如下：
 ```
 {
-    // 60-bit payloads
-    OBJC_TAG_NSAtom            = 0, 
-    OBJC_TAG_1                 = 1, 
-    OBJC_TAG_NSString          = 2, 
-    OBJC_TAG_NSNumber          = 3, 
-    OBJC_TAG_NSIndexPath       = 4, 
-    OBJC_TAG_NSManagedObjectID = 5, 
-    OBJC_TAG_NSDate            = 6,
-
-    // 60-bit reserved
-    OBJC_TAG_RESERVED_7        = 7, 
-
-    // 52-bit payloads
-    OBJC_TAG_Photos_1          = 8,
-    OBJC_TAG_Photos_2          = 9,
-    OBJC_TAG_Photos_3          = 10,
-    OBJC_TAG_Photos_4          = 11,
-    OBJC_TAG_XPC_1             = 12,
-    OBJC_TAG_XPC_2             = 13,
-    OBJC_TAG_XPC_3             = 14,
-    OBJC_TAG_XPC_4             = 15,
-    OBJC_TAG_NSColor           = 16,
-    OBJC_TAG_UIColor           = 17,
-    OBJC_TAG_CGColor           = 18,
-    OBJC_TAG_NSIndexSet        = 19,
-    OBJC_TAG_NSMethodSignature = 20,
-    OBJC_TAG_UTTypeRecord      = 21,
-
-    // When using the split tagged pointer representation
-    // (OBJC_SPLIT_TAGGED_POINTERS), this is the first tag where
-    // the tag and payload are unobfuscated. All tags from here to
-    // OBJC_TAG_Last52BitPayload are unobfuscated. The shared cache
-    // builder is able to construct these as long as the low bit is
-    // not set (i.e. even-numbered tags).
-    OBJC_TAG_FirstUnobfuscatedSplitTag = 136, // 128 + 8, first ext tag with high bit set
-
-    OBJC_TAG_Constant_CFString = 136,
-
-    OBJC_TAG_First60BitPayload = 0, 
-    OBJC_TAG_Last60BitPayload  = 6, 
-    OBJC_TAG_First52BitPayload = 8, 
-    OBJC_TAG_Last52BitPayload  = 263,
-
-    OBJC_TAG_RESERVED_264      = 264
+  "title": "iOS Engineer",
+  "age": 18,
+  "name": null
 }
 ```
-本质上来说 Tagged Pointer 就是 Tag + Data 组合的一个内存占用 8 个字节 64 位的伪指针：
-* Tag 为特殊标记，用于区分是否是 Tagged Pointer 指针以及区分 NSNumber、NSDate、NSString 等对象类型；
-* Data 为对象对应存储的值。
+这时当我们给 `null`（ `NSNull` 对象）发送消息的话，很大可能会直接Crash（ `null` 是有内存的）。
 
-在运行效率上，很多涉及 Tagged Pointer 类型相关功能，苹果都有针对性的进行了优化，因此执行起来效率特别高，具体可在源码中搜索 `isTaggedPointer` 进一步查看。
+如何解决这个问题呢，通常有一下几种方式：
 
-另外，在源码 objc-runtime-new.mm 中有一段注释对 Tagged pointer objects 进行了解释，具体如下：
+1. 接口端调整，修改默认数据的方式，在创建表的时候，添加上 'not null default' ；
+2. 对可能出现空的字段进行非空判断；
 ```
-/***********************************************************************
-* Tagged pointer objects.
-*
-* Tagged pointer objects store the class and the object value in the 
-* object pointer; the "pointer" does not actually point to anything.
-* 
-* Tagged pointer objects currently use this representation:
-* (LSB)
-*  1 bit   set if tagged, clear if ordinary object pointer
-*  3 bits  tag index
-* 60 bits  payload
-* (MSB)
-* The tag index defines the object's class. 
-* The payload format is defined by the object's class.
-*
-* If the tag index is 0b111, the tagged pointer object uses an 
-* "extended" representation, allowing more classes but with smaller payloads:
-* (LSB)
-*  1 bit   set if tagged, clear if ordinary object pointer
-*  3 bits  0b111
-*  8 bits  extended tag index
-* 52 bits  payload
-* (MSB)
-*
-* Some architectures reverse the MSB and LSB in these representations.
-*
-* This representation is subject to change. Representation-agnostic SPI is:
-* objc-internal.h for class implementers.
-* objc-gdb.h for debuggers.
-**********************************************************************/
+if (![object isKindOfClass:[NSNull class]]){
+    // ...
+}
 ```
-详细介绍此处就不在翻译，重点说一下：
-* 1 bit 用来标识是否是 Tagged Pointer；
-* 3 bits 用来标识类型；
-* 60 bits 负载数据容量 即存储对象数据；
-
-**注意：** 此处不对 Tagged Pointer 实现原理做详细介绍，有兴趣的同学可以 Google 一下 Tagged Pointer，有很多大神介绍的非常详尽。
-
-由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 isa 指针。所以当我们通过 LLDB 打印 Tagged Pointer 对应的 `isa` 指针时，程序会报错错误提示：
-> error: Couldn't apply expression side effects : Couldn't dematerialize a result variable: couldn't read its memory
-
-而当针对 Tagged Pointer 需用使用到类似 Objecttive-C 对象的 isa 指针功能时，可以通过调用 `isKindOfClass` 和 `object_getClass` 实现判断及其他操作。
+3. 对 `JSON` 进行字符串匹配, 替换 `null` 为空字符 ""（**注意：** 这个方法可能会有问题）；
+4. 解析数据时对类型进行检查，并把 `NSNull` 类型的值替换成 `nil`；
+5. 如果使用的是 `AFNetworking` 请求数据，可以使用其提供的 `((AFJSONResponseSerializer *)manager.responseSerializer).removesKeysWithNullValues = YES;` 去掉空值；
+6. 使用第三方库 `NullSafe`，它是 `NSNull` 上的一个简单的 `category` ，为无法识别的消息返回 `nil` ，其代码实现非常简单，具体可见源码： [NullSafe](https://github.com/nicklockwood/NullSafe) ( https://github.com/nicklockwood/NullSafe )
 
 
 ---
-### 总结
+### **总结**
 
+随着越来越多的项目使用 `Objective-C` 与 `Swift` 混编开发，`Nullability` 越来越需要大家引起重视，一旦使用不当，可能在代码的某个角落就会出现一个 bug 甚至导致 App Crash。以上就是本文对 `iOS Nullability` 相关知识点的介绍，希望这篇文章对你有所帮助，感谢阅读。
 
 ---
-**最后：期望接下来能再写一篇！**
 
-### 参考资料：
+### **参考资料：**
 
-[Nullability Attributes](https://clang.llvm.org/docs/AttributeReference.html#nullability-attributes)
+* [Nullability Attributes](https://clang.llvm.org/docs/AttributeReference.html#nullability-attributes) ( https://clang.llvm.org/docs/AttributeReference.html#nullability-attributes )
 
-[nil / Nil / NULL / NSNull](https://nshipster.cn/nil/)
+* [nil / Nil / NULL / NSNull](https://nshipster.cn/nil/) ( https://nshipster.cn/nil/ )
 
-[Difference between nullable, __nullable and _Nullable in Objective-C](https://stackoverflow.com/questions/32452889/difference-between-nullable-nullable-and-nullable-in-objective-c)
+* [Difference between nullable, __nullable and _Nullable in Objective-C](https://stackoverflow.com/questions/32452889/difference-between-nullable-nullable-and-nullable-in-objective-c) ( https://stackoverflow.com/questions/32452889/difference-between-nullable-nullable-and-nullable-in-objective-c )
 
-[Implementing Equality and Hashing](https://www.mikeash.com/pyblog/friday-qa-2010-06-18-implementing-equality-and-hashing.html)
+* [[NSNull length]: unrecognized selector sent to JSON objects](https://stackoverflow.com/questions/16607960/nsnull-length-unrecognized-selector-sent-to-json-objects/16610117) ( https://stackoverflow.com/questions/16607960/nsnull-length-unrecognized-selector-sent-to-json-objects/16610117 )
+
+---
+### **关于技术组**
+iOS 技术组主要用来学习、分享日常开发中使用到的技术，一起保持学习，保持进步。文章仓库在这里：https://github.com/minhechen/iOSTechTeam 微信公众号：iOS技术组，欢迎联系进群学习交流，感谢阅读。
