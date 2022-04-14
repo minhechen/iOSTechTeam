@@ -1,4 +1,19 @@
-# iOS Teach Team iOS 面基 | 第06节 Equality（即 ==，，isEqual，isEqualToString） 详细探究
+# iOS Teach Team iOS 探究 | 第六篇 Equality（即 ==，isEqual，isEqualToString）详细探究
+
+探究系列已发布文章列表，有兴趣的同学可以翻阅一下：
+
+[第一篇 | iOS 属性 @property 详细探究](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076636&idx=1&sn=bd581243bfce19b83c508336f780b3e8&chksm=8c0a7849bb7df15fb2d280e8f0e971f1d31a5a435179fa62d28ab6ced8988c875f4366c991db&scene=21&token=898954029&lang=zh_CN#wechat_redirect)
+
+[第二篇 | iOS 深入理解 Block 使用及原理](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076720&idx=1&sn=e80b68663ea810d223a9e3a9240f0a9f&chksm=8c0a7fa5bb7df6b3d63f19040fc99b66600a77a301d1ee89d788048a8720cba6691257204cee&token=898954029&lang=zh_CN#rd)
+
+[第三篇 | iOS 类别 Category 和扩展 Extension 及关联对象详解](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076808&idx=1&sn=986dfd85f4785f79f4517cce4cf9b690&chksm=8c0a7f1dbb7df60b1dc2073f98c379f1acb50fd0cd8508141b6072633791c1d57d0e66016cb0&token=898954029&lang=zh_CN#rd)
+
+[第四篇 | iOS 常用锁 NSLock ，@synchronized 等的底层实现详解](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076878&idx=1&sn=6c452c7d885826ce12db3f754111b7cd&chksm=8c0a7f5bbb7df64d59e6461ad8cb86e6922bda3af35e488b0d7c924d16e91abe174d72de3f38&token=898954029&lang=zh_CN#rd)
+
+[第五篇 | iOS 全面理解 Nullability](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076953&idx=1&sn=b0f51d90c9a6eff16391fa92dd2b12dd&chksm=8c0a7e8cbb7df79a2bfe089f2d6227aa5cde67f13dfa09117184892185245287ab388a5bce25&token=898954029&lang=zh_CN#rd)
+
+
+------- 正文开始 -------
 
 ### **引言**
 
@@ -7,25 +22,6 @@
 ---
 ### **常用介绍**
 
-* 首先要理解“指针”和“指针值”，以及“直接引用”和“间接引用”的区别
-
-存放变量地址的变量我们称之为“指针变量”，简单的说变量 `p` 中存储的是变量 `a` 的地址，那么 `p` 就可以称为是指针变量，或者说 `p` 指向 `a` 。当我们访问 `a` 变量的时候其实是程序先根据 `a` 取得 `a` 对应的地址，再到这个地址对应的存储空间中拿到 `a` 的值，这种方式我们称为“直接引用”。
-
-而当我们通过 `p` 取得 `a` 的时候首先要先根据 `p` 转换成 `p` 对应的存储地址，再根据这个地址到其对应的存储空间中拿到存储内容，它的内容其实就是 `a` 的地址，然后根据这个地址到对应的存储空间中取得对应的内容，这个内容就是 `a` 的值，这种通过 `p` 找到 `a` 对应地址再取值的方式称为“间接引用”。
-
-* iOS 内存分区：
-
-堆：存放对象，`Objective-C` 通过 `new` ，`alloc` 创建的对象，`C` 通过 `malloc` 创建的对象。由开发者进行管理，动态分配和释放，内存不连续，速度相对较慢。
-
-栈：存放局部变量，函数的参数，由系统分配和释放，内存连续，速度相对较快。
-
-BSS 段：存放未初始化的全局变量和静态变量，内存一直存在，程序结束后由系统释放。
-
-Data 段：存放已经初始化的全局变量及静态变量，常量。其属于静态内存分配，分为只读数据段（常量区）和读写数据段，程序结束后由系统释放。
-
-代码区：用于存放程序运行时的代码，代码会被编译成二进制存进内存的程序代码区。
-
----
 ### **`isEqual:`，`isEqualToString:` 及 `==` 的区别**
 
 
@@ -206,6 +202,27 @@ OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代�
 > error: Couldn't apply expression side effects : Couldn't dematerialize a result variable: couldn't read its memory
 
 而当针对 Tagged Pointer 需要使用到类似 Objecttive-C 对象的 `isa` 指针功能时，可以通过调用 `isKindOfClass` 和 `object_getClass` 实现判断及其他操作。
+
+---
+### **拓展知识**
+
+* 理解“指针”和“指针值”，以及“直接引用”和“间接引用”的区别
+
+存放变量地址的变量我们称之为“指针变量”，简单的说变量 `p` 中存储的是变量 `a` 的地址，那么 `p` 就可以称为是指针变量，或者说 `p` 指向 `a` 。当我们访问 `a` 变量的时候其实是程序先根据 `a` 取得 `a` 对应的地址，再到这个地址对应的存储空间中拿到 `a` 的值，这种方式我们称为“直接引用”。
+
+而当我们通过 `p` 取得 `a` 的时候首先要先根据 `p` 转换成 `p` 对应的存储地址，再根据这个地址到其对应的存储空间中拿到存储内容，它的内容其实就是 `a` 的地址，然后根据这个地址到对应的存储空间中取得对应的内容，这个内容就是 `a` 的值，这种通过 `p` 找到 `a` 对应地址再取值的方式称为“间接引用”。
+
+* iOS 内存分区：
+
+堆：存放对象，`Objective-C` 通过 `new` ，`alloc` 创建的对象，`C` 通过 `malloc` 创建的对象。由开发者进行管理，动态分配和释放，内存不连续，速度相对较慢。
+
+栈：存放局部变量，函数的参数，由系统分配和释放，内存连续，速度相对较快。
+
+BSS 段：存放未初始化的全局变量和静态变量，内存一直存在，程序结束后由系统释放。
+
+Data 段：存放已经初始化的全局变量及静态变量，常量。其属于静态内存分配，分为只读数据段（常量区）和读写数据段，程序结束后由系统释放。
+
+代码区：用于存放程序运行时的代码，代码会被编译成二进制存进内存的程序代码区。
 
 ---
 ### **总结**
