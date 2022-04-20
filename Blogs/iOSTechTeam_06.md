@@ -10,7 +10,7 @@
 
 [第四篇 | iOS 常用锁 NSLock ，@synchronized 等的底层实现详解](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076878&idx=1&sn=6c452c7d885826ce12db3f754111b7cd&chksm=8c0a7f5bbb7df64d59e6461ad8cb86e6922bda3af35e488b0d7c924d16e91abe174d72de3f38&token=898954029&lang=zh_CN#rd)
 
-[第五篇 | Equality 详细探究](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076953&idx=1&sn=b0f51d90c9a6eff16391fa92dd2b12dd&chksm=8c0a7e8cbb7df79a2bfe089f2d6227aa5cde67f13dfa09117184892185245287ab388a5bce25&token=898954029&lang=zh_CN#rd)
+[第五篇 | iOS 全面理解 Nullability](https://mp.weixin.qq.com/s?__biz=MzAxNjIzNjI4Mg==&mid=2450076953&idx=1&sn=b0f51d90c9a6eff16391fa92dd2b12dd&chksm=8c0a7e8cbb7df79a2bfe089f2d6227aa5cde67f13dfa09117184892185245287ab388a5bce25&token=898954029&lang=zh_CN#rd)
 
 
 ------- 正文开始 -------
@@ -201,7 +201,7 @@ OS X 和 iOS 都在 64 位代码中使用 Tagged Pointer 对象。在 32 位代�
 由于 Tagged Pointer 是一个伪指针，而不是一个真正的对象，因此它并没有 `isa` 指针。所以当我们通过 `LLDB` 打印 Tagged Pointer 对应的 `isa` 指针时，程序会报错误提示：
 > error: Couldn't apply expression side effects : Couldn't dematerialize a result variable: couldn't read its memory
 
-而当针对 Tagged Pointer 需要使用到类似 Objecttive-C 对象的 `isa` 指针功能时，可以通过调用 `isKindOfClass` 和 `object_getClass` 实现判断及其他操作。
+而当针对 Tagged Pointer 需要使用到类似 Objective-C 对象的 `isa` 指针功能时，可以通过调用 `isKindOfClass` 和 `object_getClass` 实现判断及其他操作。
 
 ---
 ### **拓展知识**
